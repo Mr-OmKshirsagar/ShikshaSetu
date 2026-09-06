@@ -75,13 +75,15 @@ class LearningResourceRepository:
         self, resource_id: str, competency_code: str
     ) -> Optional[Dict[str, Any]]:
         """Get mapping between a resource and competency."""
+        oid = ObjectId(resource_id) if ObjectId.is_valid(resource_id) else None
         return self.mappings.find_one(
-            {"resource_id": ObjectId(resource_id), "competency_code": competency_code}
+            {"$or": [{"resource_id": oid}, {"resource_id": str(resource_id)}], "competency_code": competency_code}
         )
 
     def get_mappings_for_resource(self, resource_id: str) -> List[Dict[str, Any]]:
         """Get all competency mappings for a resource."""
-        return list(self.mappings.find({"resource_id": ObjectId(resource_id)}))
+        oid = ObjectId(resource_id) if ObjectId.is_valid(resource_id) else None
+        return list(self.mappings.find({"$or": [{"resource_id": oid}, {"resource_id": str(resource_id)}]}))
 
     def get_mappings_for_competency(self, competency_code: str) -> List[Dict[str, Any]]:
         """Get all resource mappings for a competency."""

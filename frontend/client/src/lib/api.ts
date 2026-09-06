@@ -165,8 +165,11 @@ export type Recommendation = {
   duration_hours: number | null;
   relevance_score: number;
   score?: number;
+  why_recommended?: string;
+  addressed_gaps_count?: number;
+  addressed_competency_codes?: string[];
   reason: string;
-  explanation?: string;
+  explanation?: any;
   priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
   status: string;
   created_at: string;
@@ -659,10 +662,10 @@ export type EmergingSkillItem = {
   code: string;
   name: string;
   domain: string;
-  urgency_score: number;
-  demand_index: number;
   officials_in_deficit: number;
-  average_gap_size: number;
+  average_gap_size: number | null;
+  average_current_level: number | null;
+  average_required_level: number | null;
   rationale: string;
   recommended_focus: string;
 };
@@ -670,6 +673,8 @@ export type EmergingSkillItem = {
 export type EmergingSkillsResponse = {
   strategic_focus_domains: string[];
   emerging_capabilities: EmergingSkillItem[];
+  historical_trend_available: boolean;
+  data_basis: string;
 };
 
 export type CapacityInterventionItem = {
@@ -678,18 +683,19 @@ export type CapacityInterventionItem = {
   domain: string;
   priority: string;
   target_officials_count: number;
-  estimated_training_hours: number;
+  estimated_training_hours: number | null;
   recommended_courses_count: number;
   top_resource_title?: string | null;
   top_resource_provider?: string | null;
-  suggested_cohort_size: number;
+  suggested_cohort_size: number | null;
 };
 
 export type CapacityPlanningResponse = {
-  total_training_hours_required: number;
+  total_training_hours_required: number | null;
   total_officials_requiring_intervention: number;
   high_priority_initiatives_count: number;
   interventions: CapacityInterventionItem[];
+  data_basis: string;
 };
 
 export type AdminUserItem = {

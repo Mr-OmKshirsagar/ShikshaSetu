@@ -38,7 +38,7 @@ def get_admin_dashboard(db: Database, department: Optional[str] = None) -> schem
 
     # Average capability level
     levels = [p.get("current_level") for p in profiles if p.get("current_level") is not None]
-    avg_capability = round(sum(levels) / len(levels), 2) if levels else 3.2
+    avg_capability = round(sum(levels) / len(levels), 2) if levels else 0.0
 
     # Learning hours
     total_minutes = sum(a.get("duration_minutes", 0) for a in activities)
@@ -72,7 +72,7 @@ def get_admin_dashboard(db: Database, department: Optional[str] = None) -> schem
 
     # Quizzes
     quiz_scores = [a.get("percentage", 0) for a in quiz_attempts if a.get("percentage") is not None]
-    avg_quiz_score = round(sum(quiz_scores) / len(quiz_scores), 1) if quiz_scores else 82.5
+    avg_quiz_score = round(sum(quiz_scores) / len(quiz_scores), 1) if quiz_scores else 0.0
 
     # Department distribution
     dept_counts = defaultdict(int)
@@ -91,13 +91,6 @@ def get_admin_dashboard(db: Database, department: Optional[str] = None) -> schem
         {"domain": d, "average_level": round(sum(lvls) / len(lvls), 2), "count": len(lvls)}
         for d, lvls in domain_levels.items()
     ]
-    if not domain_capability_breakdown:
-        domain_capability_breakdown = [
-            {"domain": "CORE", "average_level": 3.4, "count": 12},
-            {"domain": "DOMAIN", "average_level": 3.1, "count": 18},
-            {"domain": "BEHAVIORAL", "average_level": 3.6, "count": 10},
-        ]
-
     recent_activity = []
     for a in activities[:5]:
         recent_activity.append({
@@ -119,8 +112,8 @@ def get_admin_dashboard(db: Database, department: Optional[str] = None) -> schem
         total_quizzes_assigned=len(quizzes),
         total_quiz_attempts=len(quiz_attempts),
         average_quiz_score_pct=avg_quiz_score,
-        departments_count=len(dept_counts) or 1,
-        competencies_count=len(competencies) or 42,
+        departments_count=len(dept_counts),
+        competencies_count=len(competencies),
         department_distribution=department_distribution,
         domain_capability_breakdown=domain_capability_breakdown,
         recent_activity=recent_activity,
@@ -153,7 +146,7 @@ def get_workforce_overview(db: Database, department: Optional[str] = None) -> sc
         u_id = str(u["_id"])
         dept = u.get("department") or "General Administration"
         dept_counts[dept] += 1
-        prof_role = role_map.get(str(u.get("role_id")), "Statistical Officer")
+        prof_role = role_map.get(str(u.get("role_id")), "Role Mapping Pending") if u.get("role_id") else "Role Mapping Pending"
         role_counts[prof_role] += 1
 
         u_profs = user_profiles.get(u_id, [])
@@ -194,13 +187,6 @@ def get_workforce_overview(db: Database, department: Optional[str] = None) -> sc
         {"domain": d, "average_proficiency": round(sum(lvls) / len(lvls), 2), "total_assessed": len(lvls)}
         for d, lvls in domain_levels.items()
     ]
-    if not domain_distribution:
-        domain_distribution = [
-            {"domain": "CORE", "average_proficiency": 3.4, "total_assessed": 12},
-            {"domain": "DOMAIN", "average_proficiency": 3.1, "total_assessed": 18},
-            {"domain": "BEHAVIORAL", "average_proficiency": 3.6, "total_assessed": 10},
-        ]
-
     return schemas.WorkforceOverviewResponse(
         total_workforce=len(users),
         department_breakdown=[{"department": d, "count": c} for d, c in dept_counts.items()],
@@ -251,11 +237,11 @@ def get_competency_analytics(db: Database, department: Optional[str] = None) -> 
         avg_req = round(sum(req_levels) / len(req_levels), 2) if req_levels else 4.0
 
         cur_levels = comp_profiles.get(c_id, [])
-        avg_cur = round(sum(cur_levels) / len(cur_levels), 2) if cur_levels else 2.5
-        avg_gap = round(max(0.0, avg_req - avg_cur), 2)
+        avg_cur = round(sum(cur_levels) / len(cur_levels), 2) if cur_levels else 0.0
+        avg_gap = round(max(0.0, avg_req - avg_cur), 2) if cur_levels else 0.0
 
         meeting_count = sum(1 for lvl in cur_levels if lvl >= avg_req)
-        meeting_pct = round((meeting_count / len(cur_levels)) * 100, 1) if cur_levels else 35.0
+        meeting_pct = round((meeting_count / len(cur_levels)) * 100, 1) if cur_levels else 0.0
         critical_deficits = sum(1 for lvl in cur_levels if (avg_req - lvl) >= 1.5)
 
         priority = "CRITICAL" if avg_gap >= 1.5 else ("HIGH" if avg_gap >= 1.0 else ("MEDIUM" if avg_gap >= 0.5 else "LOW"))
@@ -265,7 +251,7 @@ def get_competency_analytics(db: Database, department: Optional[str] = None) -> 
             code=c.get("code", "COMP"),
             name=c.get("name", "Competency"),
             domain=domain,
-            required_roles_count=req_roles_count or 1,
+            required_roles_count=req_roles_count,
             average_required_level=avg_req,
             average_current_level=avg_cur,
             average_gap=avg_gap,
@@ -311,7 +297,7 @@ def get_skill_gap_analytics(db: Database, department: Optional[str] = None) -> s
         u_id = str(u["_id"])
         u_role_id = str(u.get("role_id")) if u.get("role_id") else None
         dept = u.get("department") or "General Administration"
-        role_reqs = [r for r in requirements if str(r.get("role_id")) == u_role_id] if u_role_id else requirements[:3]
+        role_reqs = [r for r in requirements if str(r.get("role_id")) == u_role_id] if u_role_id else []
 
         for req in role_reqs:
             c_id = str(req.get("competency_id"))
@@ -392,7 +378,7 @@ def get_training_effectiveness(db: Database) -> schemas.TrainingEffectivenessRes
 
     total_enrolled = len(activities)
     completed_activities = [a for a in activities if a.get("status") == "completed"]
-    completion_rate = round((len(completed_activities) / total_enrolled) * 100, 1) if total_enrolled else 78.5
+    completion_rate = round((len(completed_activities) / total_enrolled) * 100, 1) if total_enrolled else 0.0
 
     total_minutes = sum(a.get("duration_minutes", 0) for a in activities)
     total_hours = round(total_minutes / 60.0, 1)
@@ -401,7 +387,7 @@ def get_training_effectiveness(db: Database) -> schemas.TrainingEffectivenessRes
     authoritative_count = sum(1 for e in evidence if e.get("evidence_type") == "CAPABILITY_ASSESSMENT") or len(assessments)
 
     quiz_scores = [a.get("percentage", 0) for a in quiz_attempts if a.get("percentage") is not None]
-    avg_quiz_score = round(sum(quiz_scores) / len(quiz_scores), 1) if quiz_scores else 84.0
+    avg_quiz_score = round(sum(quiz_scores) / len(quiz_scores), 1) if quiz_scores else 0.0
 
     # Department breakdown
     user_dept_map = {str(u["_id"]): u.get("department", "General") for u in users}
@@ -417,20 +403,17 @@ def get_training_effectiveness(db: Database) -> schemas.TrainingEffectivenessRes
         {"department": d, "enrolled": dept_total[d], "completed": dept_completed[d], "rate_pct": round((dept_completed[d] / dept_total[d]) * 100, 1) if dept_total[d] else 0.0}
         for d in dept_total
     ]
-    if not completion_by_dept:
-        completion_by_dept = [{"department": "Ministry of Statistics", "enrolled": 14, "completed": 11, "rate_pct": 78.6}]
-
     return schemas.TrainingEffectivenessResponse(
-        total_enrolled_activities=total_enrolled or 15,
-        total_completed_activities=len(completed_activities) or 12,
+        total_enrolled_activities=total_enrolled,
+        total_completed_activities=len(completed_activities),
         overall_completion_rate_pct=completion_rate,
-        total_learning_minutes=total_minutes or 360,
-        total_learning_hours=total_hours or 6.0,
-        supporting_evidence_count=supporting_count or 12,
-        authoritative_evidence_count=authoritative_count or 5,
-        total_quizzes_created=len(quizzes) or 3,
-        total_quizzes_assigned=len(quizzes) or 3,
-        total_quiz_submissions=len(quiz_attempts) or 8,
+        total_learning_minutes=total_minutes,
+        total_learning_hours=total_hours,
+        supporting_evidence_count=supporting_count,
+        authoritative_evidence_count=authoritative_count,
+        total_quizzes_created=len(quizzes),
+        total_quizzes_assigned=len(quizzes),
+        total_quiz_submissions=len(quiz_attempts),
         average_quiz_score_pct=avg_quiz_score,
         completion_by_department=completion_by_dept,
         evidence_ledger_breakdown={
@@ -438,118 +421,170 @@ def get_training_effectiveness(db: Database) -> schemas.TrainingEffectivenessRes
             "Authoritative Evidence (Capability Assessments)": authoritative_count,
         },
         training_to_assessment_funnel={
-            "Learning Enrolled": total_enrolled or 15,
-            "Modules Completed": len(completed_activities) or 12,
-            "Practice Quizzes Taken": len(quiz_attempts) or 8,
-            "Formal Assessments Validated": authoritative_count or 5,
+            "Learning Enrolled": total_enrolled,
+            "Modules Completed": len(completed_activities),
+            "Practice Quizzes Taken": len(quiz_attempts),
+            "Formal Assessments Validated": authoritative_count,
         },
     )
 
 
 def get_emerging_skills(db: Database) -> schemas.EmergingSkillsResponse:
+    users = repository.get_all_users(db)
     competencies = repository.get_all_competencies(db)
     requirements = repository.get_all_role_requirements(db)
     profiles = repository.get_all_competency_profiles(db)
 
-    # Focus priority domains for modernization in civil services
-    strategic_domains = ["TECHNOLOGY", "DATA", "DOMAIN", "BEHAVIORAL", "GOVERNANCE"]
-
     comp_profiles = defaultdict(list)
-    for p in profiles:
-        if p.get("current_level") is not None:
-            comp_profiles[str(p.get("competency_id"))].append(p["current_level"])
+    profile_map = defaultdict(dict)
+    for profile in profiles:
+        if profile.get("current_level") is not None:
+            profile_map[str(profile.get("user_id"))][str(profile.get("competency_id"))] = profile
 
-    comp_reqs = defaultdict(list)
-    for r in requirements:
-        comp_reqs[str(r.get("competency_id"))].append(r)
+    requirements_by_role = defaultdict(list)
+    for requirement in requirements:
+        requirements_by_role[str(requirement.get("role_id"))].append(requirement)
+
+    competency_map = {str(c["_id"]): c for c in competencies}
+    observed = defaultdict(lambda: {"gaps": [], "current": [], "required": [], "users": set()})
+    for user in users:
+        role_id = str(user.get("role_id")) if user.get("role_id") else None
+        if not role_id:
+            continue
+        for requirement in requirements_by_role.get(role_id, []):
+            competency_id = str(requirement.get("competency_id"))
+            profile = profile_map.get(str(user["_id"]), {}).get(competency_id)
+            if not profile:
+                continue
+            current = _safe_float(profile.get("current_level"))
+            required = _safe_float(requirement.get("required_level"))
+            gap = max(0.0, required - current)
+            if gap <= 0:
+                continue
+            stats = observed[competency_id]
+            stats["gaps"].append(gap)
+            stats["current"].append(current)
+            stats["required"].append(required)
+            stats["users"].add(str(user["_id"]))
 
     emerging = []
     for c in competencies:
         c_id = str(c["_id"])
+        stats = observed.get(c_id)
+        if not stats or not stats["gaps"]:
+            continue
         domain = c.get("domain", "CORE")
         code = c.get("code", "")
         name = c.get("name", "")
 
-        cur_levels = comp_profiles.get(c_id, [])
-        reqs = comp_reqs.get(c_id, [])
-        req_lvl = _safe_float(reqs[0].get("required_level", 4.0)) if reqs else 4.0
-        avg_cur = sum(cur_levels) / len(cur_levels) if cur_levels else 2.4
-        gap = max(0.5, req_lvl - avg_cur)
-
-        # Technology / Data / Analytical skills have strategic urgency multiplier
-        multiplier = 1.3 if any(kw in (code + name).upper() for kw in ("DATA", "TECH", "AI", "ANALYTICS", "PYTHON", "SURVEY", "STAT")) else 1.0
-        urgency = round(gap * multiplier * 2.0, 1)
-        demand = len(reqs) * 8 + int(gap * 10)
-
-        rationale = f"High capability deficit ({gap:.1f} pts) across key official job roles with critical administrative priority."
-        focus = f"Deploy cohort-based training and authoritative assessment validation for {name}."
+        gap = sum(stats["gaps"]) / len(stats["gaps"])
+        avg_current = sum(stats["current"]) / len(stats["current"])
+        avg_required = sum(stats["required"]) / len(stats["required"])
+        rationale = f"Observed gap of {gap:.1f} points across {len(stats['users'])} assessed official(s) with role requirements."
+        focus = f"Review mapped learning resources and assessment evidence for {name}."
 
         emerging.append(schemas.EmergingSkillItem(
             competency_id=c_id,
             code=code,
             name=name,
             domain=domain,
-            urgency_score=urgency,
-            demand_index=demand,
-            officials_in_deficit=max(3, len(cur_levels) + 2),
+            officials_in_deficit=len(stats["users"]),
             average_gap_size=round(gap, 1),
+            average_current_level=round(avg_current, 1),
+            average_required_level=round(avg_required, 1),
             rationale=rationale,
             recommended_focus=focus,
         ))
 
-    emerging.sort(key=lambda x: x.urgency_score, reverse=True)
+    emerging.sort(key=lambda x: (x.average_gap_size or 0, x.officials_in_deficit), reverse=True)
+    domain_counts = defaultdict(int)
+    for item in emerging:
+        domain_counts[item.domain] += item.officials_in_deficit
 
     return schemas.EmergingSkillsResponse(
-        strategic_focus_domains=strategic_domains,
+        strategic_focus_domains=[domain for domain, _ in sorted(domain_counts.items(), key=lambda pair: pair[1], reverse=True)],
         emerging_capabilities=emerging[:10],
+        historical_trend_available=False,
+        data_basis="Based on assessed competency profiles and stored role requirements; historical trend unavailable.",
     )
 
 
 def get_capacity_planning(db: Database) -> schemas.CapacityPlanningResponse:
+    users = repository.get_all_users(db)
     competencies = repository.get_all_competencies(db)
     resources = repository.get_all_learning_resources(db)
     requirements = repository.get_all_role_requirements(db)
 
     res_by_comp = defaultdict(list)
     for r in resources:
-        comp_code = r.get("competency_code") or r.get("competency_id")
-        if comp_code:
-            res_by_comp[str(comp_code)].append(r)
+        for key in (r.get("competency_code"), r.get("competency_id")):
+            if key:
+                res_by_comp[str(key)].append(r)
+
+    profile_map = defaultdict(dict)
+    for profile in repository.get_all_competency_profiles(db):
+        if profile.get("current_level") is not None:
+            profile_map[str(profile.get("user_id"))][str(profile.get("competency_id"))] = profile
+    requirements_by_role = defaultdict(list)
+    for requirement in requirements:
+        requirements_by_role[str(requirement.get("role_id"))].append(requirement)
 
     interventions = []
     total_hours = 0.0
     total_officials = 0
 
-    for c in competencies[:8]:
+    for c in competencies:
         code = c.get("code", "COMP")
         name = c.get("name", "Competency")
         domain = c.get("domain", "CORE")
-        matching_res = res_by_comp.get(code, [])
+        matching_res = res_by_comp.get(code) or res_by_comp.get(str(c["_id"]), [])
         top_res = matching_res[0] if matching_res else None
 
-        target_count = 12
-        est_hours = 24.0
-        total_hours += est_hours
+        gap_users = set()
+        gaps = []
+        for user in users:
+            role_id = str(user.get("role_id")) if user.get("role_id") else None
+            for requirement in requirements_by_role.get(role_id, []):
+                if str(requirement.get("competency_id")) != str(c["_id"]):
+                    continue
+                profile = profile_map.get(str(user["_id"]), {}).get(str(c["_id"]))
+                if not profile:
+                    continue
+                gap = max(0.0, _safe_float(requirement.get("required_level")) - _safe_float(profile.get("current_level")))
+                if gap > 0:
+                    gap_users.add(str(user["_id"]))
+                    gaps.append(gap)
+        target_count = len(gap_users)
+        if target_count == 0:
+            continue
+        duration_values = [_safe_float(r.get("metadata", {}).get("duration_hours"), None) for r in matching_res]
+        duration_values = [value for value in duration_values if value is not None and value > 0]
+        est_hours = round(min(duration_values) * target_count, 1) if duration_values else None
+        if est_hours is not None:
+            total_hours += est_hours
         total_officials += target_count
+        average_gap = sum(gaps) / len(gaps)
+        priority = "CRITICAL" if average_gap >= 2 else ("HIGH" if average_gap >= 1 else "MEDIUM")
 
         interventions.append(schemas.CapacityInterventionItem(
             competency_code=code,
             competency_name=name,
             domain=domain,
-            priority="CRITICAL" if domain in ("DOMAIN", "TECHNOLOGY") else "HIGH",
+            priority=priority,
             target_officials_count=target_count,
             estimated_training_hours=est_hours,
-            recommended_courses_count=len(matching_res) or 2,
-            top_resource_title=top_res.get("title") if top_res else f"National Curriculum on {name}",
-            top_resource_provider=top_res.get("provider") if top_res else "iGOT Karmayogi",
-            suggested_cohort_size=6,
+            recommended_courses_count=len(matching_res),
+            top_resource_title=top_res.get("title") if top_res else None,
+            top_resource_provider=top_res.get("provider") if top_res else None,
+            suggested_cohort_size=None,
         ))
 
     return schemas.CapacityPlanningResponse(
-        total_training_hours_required=total_hours,
+        total_training_hours_required=round(total_hours, 1) if total_hours else None,
         total_officials_requiring_intervention=total_officials,
         high_priority_initiatives_count=len(interventions),
         interventions=interventions,
+        data_basis="Based on assessed officials below stored role requirements and mapped catalog resources. Duration and cohort size are shown only when configured.",
     )
 
 
@@ -564,7 +599,7 @@ def get_admin_users(db: Database, department: Optional[str] = None) -> schemas.A
     items = []
     for u in users:
         u_id = str(u["_id"])
-        prof_role = role_map.get(str(u.get("role_id")), "Statistical Officer")
+        prof_role = role_map.get(str(u.get("role_id")), "Unresolved") if u.get("role_id") else "Unresolved"
         items.append(schemas.AdminUserItem(
             id=u_id,
             email=u.get("email", ""),
@@ -649,7 +684,7 @@ def promote_user_to_trainer(db: Database, user_id: str) -> schemas.AdminUserItem
 
     roles = repository.get_all_roles(db)
     role_map = {str(r["_id"]): r.get("role_name", "Official") for r in roles}
-    prof_role = role_map.get(str(updated_user.get("role_id")), "Statistical Officer")
+    prof_role = role_map.get(str(updated_user.get("role_id")), "Unresolved") if updated_user.get("role_id") else "Unresolved"
 
     return schemas.AdminUserItem(
         id=str(updated_user["_id"]),
@@ -665,3 +700,52 @@ def promote_user_to_trainer(db: Database, user_id: str) -> schemas.AdminUserItem
         last_login_at=updated_user.get("last_login_at"),
     )
 
+
+def assign_user_role(db: Database, user_id: str, payload: schemas.AdminAssignRoleRequest) -> schemas.AdminUserItem:
+    """Admin-controlled resolution of a user's professional role and competency reconciliation."""
+    from app.roles.resolver import reconcile_user_competencies
+
+    u_oid = ObjectId(user_id) if ObjectId.is_valid(user_id) else None
+    user = db.users.find_one({"_id": u_oid}) if u_oid else db.users.find_one({"_id": user_id})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    r_oid = ObjectId(payload.role_id) if ObjectId.is_valid(payload.role_id) else None
+    role = db.roles.find_one({"_id": r_oid}) if r_oid else db.roles.find_one({"_id": payload.role_id})
+    if not role:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Specified role not found in active role catalog",
+        )
+
+    now = datetime.now(UTC)
+    updates: dict[str, Any] = {"updated_at": now}
+    if payload.department:
+        updates["department"] = payload.department
+    if payload.designation:
+        updates["designation"] = payload.designation
+
+    if updates:
+        db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+
+    # Formally reconcile user competencies to newly assigned role
+    reconcile_user_competencies(db, user["_id"], role["_id"])
+
+    updated_user = db.users.find_one({"_id": user["_id"]}) or user
+
+    return schemas.AdminUserItem(
+        id=str(updated_user["_id"]),
+        email=updated_user.get("email", ""),
+        full_name=updated_user.get("full_name", "User"),
+        employee_id=updated_user.get("employee_id") or f"EMP-{str(updated_user['_id'])[:6].upper()}",
+        department=updated_user.get("department") or "General Administration",
+        designation=updated_user.get("designation") or "Officer",
+        access_role=updated_user.get("access_role", "OFFICIAL"),
+        professional_role=role.get("role_name", "Official"),
+        status=updated_user.get("status", "active"),
+        created_at=updated_user.get("created_at") or now,
+        last_login_at=updated_user.get("last_login_at"),
+    )

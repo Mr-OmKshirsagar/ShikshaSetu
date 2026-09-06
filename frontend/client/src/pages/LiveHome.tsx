@@ -545,13 +545,16 @@ function LearningFlow({ recommendations, gaps, competencies, loading, error, go 
               <div className="mt-1 font-bold text-navy">{quizResult.competency?.competency_code}</div>
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-400">Updated Level</div>
+              <div className="text-xs font-bold text-slate-400">Current Level</div>
               <div className="mt-1 font-bold text-teal">{quizResult.competency?.competency_level_after} / 5.0</div>
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-400">Skill Gap After</div>
+              <div className="text-xs font-bold text-slate-400">Skill Gap</div>
               <div className="mt-1 font-bold text-orange">{quizResult.skill_gap?.gap_after}</div>
             </div>
+          </div>
+          <div className="mt-3 text-xs text-slate-500">
+            Note: Supporting quiz evidence is recorded (confidence 0.30). Competency levels are formally updated via Capability Assessments.
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <button onClick={() => go("My Competencies")} className="rounded-xl bg-orange px-4 py-3 text-sm font-bold text-white shadow-sm">

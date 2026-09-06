@@ -231,13 +231,18 @@ export function OfficialRecommendations({
                 <div>
                   {/* Top Badges */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-md bg-teal-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-800">
                         {item.provider || (item as any).resource?.provider || "iGOT"}
                       </span>
                       <span className="font-mono text-[11px] font-medium tracking-tight text-slate-400 anim-badge-pop">
                         {item.competency_code}
                       </span>
+                      {((item as any).addressed_gaps_count > 1 || (item as any).addressed_competency_codes?.length > 1) && (
+                        <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200 anim-badge-pop">
+                          Addresses {(item as any).addressed_gaps_count || (item as any).addressed_competency_codes?.length} active gaps
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 anim-badge-pop">
@@ -251,13 +256,22 @@ export function OfficialRecommendations({
                     {item.resource_title || item.title || (item as any).resource?.title || "Targeted Capability Course"}
                   </h3>
 
-                  <p className="text-xs text-slate-500 mt-1">
-                    {item.competency_name || "Mapped capability resource"} · {item.duration_hours || (item as any).resource?.metadata?.duration_hours ? `${item.duration_hours || (item as any).resource?.metadata?.duration_hours} hrs` : "Self-paced"}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
+                    <span>{item.competency_name || "Mapped capability resource"}</span>
+                    <span>·</span>
+                    <span>{item.duration_hours || (item as any).resource?.metadata?.duration_hours ? `${item.duration_hours || (item as any).resource?.metadata?.duration_hours} hrs` : "Self-paced"}</span>
+                    {(item as any).explanation?.provider_note && (
+                      <>
+                        <span>·</span>
+                        <span className="text-slate-400 italic">{(item as any).explanation.provider_note}</span>
+                      </>
+                    )}
+                  </div>
 
-                  {/* Grounded Summary */}
-                  <div className="mt-4 rounded-xl border-l-2 border-[#ef7e37] bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-                    {item.reason || (item as any).explanation?.summary || "Directly addresses your primary role capability deficit."}
+                  {/* Grounded Why Recommended Box */}
+                  <div className="mt-4 rounded-xl border-l-2 border-[#ef7e37] bg-slate-50 p-3 text-xs leading-relaxed text-slate-700">
+                    <span className="font-bold text-[#123057] block mb-0.5 text-[11px] uppercase tracking-wider">Why Recommended:</span>
+                    {item.why_recommended || (item as any).explanation?.why_recommended || item.reason || (item as any).explanation?.summary || "Directly addresses your primary role capability deficit."}
                   </div>
 
                   {/* Scoring Details Expandable */}

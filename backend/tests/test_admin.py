@@ -164,3 +164,121 @@ def test_admin_access_unauthorized_without_token(test_setup, endpoint):
     client = test_setup["client"]
     res = client.get(endpoint)
     assert res.status_code == 401, f"Expected 401 on {endpoint}, got {res.status_code}"
+
+
+def test_emerging_skills_uses_observed_gaps_and_no_forecast(test_setup):
+    db = test_setup["db"]
+    competency = db.competencies.documents[0]
+    role_id = ObjectId()
+    official = db.users.documents[2]
+    official["role_id"] = role_id
+    db.role_requirements.insert_one({
+        "_id": ObjectId(),
+        "role_id": role_id,
+        "competency_id": competency["_id"],
+        "required_level": 4,
+    })
+    db.competency_profiles.insert_one({
+        "_id": ObjectId(),
+        "user_id": official["_id"],
+        "competency_id": competency["_id"],
+        "current_level": 2,
+    })
+
+    response = test_setup["client"].get(
+        "/api/v1/admin/emerging-skills",
+        headers={"Authorization": f"Bearer {test_setup['admin_token']}"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["historical_trend_available"] is False
+    assert payload["emerging_capabilities"][0]["officials_in_deficit"] == 1
+    assert payload["emerging_capabilities"][0]["average_gap_size"] == 2.0
+    assert "urgency_score" not in payload["emerging_capabilities"][0]
+    assert "demand_index" not in payload["emerging_capabilities"][0]
+
+
+def test_sparse_analytics_does_not_invent_emerging_or_capacity_values(test_setup):
+    headers = {"Authorization": f"Bearer {test_setup['admin_token']}"}
+    client = test_setup["client"]
+
+    emerging = client.get("/api/v1/admin/emerging-skills", headers=headers)
+    capacity = client.get("/api/v1/admin/capacity-planning", headers=headers)
+
+    assert emerging.status_code == 200
+    assert emerging.json()["emerging_capabilities"] == []
+    assert emerging.json()["historical_trend_available"] is False
+    assert capacity.status_code == 200
+    assert capacity.json()["interventions"] == []
+    assert capacity.json()["total_officials_requiring_intervention"] == 0
+    assert capacity.json()["total_training_hours_required"] is None
+
+
+def test_capacity_planning_uses_real_gaps_and_does_not_fabricate_resource_data(test_setup):
+    db = test_setup["db"]
+    competency = db.competencies.documents[0]
+    role_id = ObjectId()
+    official = db.users.documents[2]
+    official["role_id"] = role_id
+    db.role_requirements.insert_one({
+        "_id": ObjectId(),
+        "role_id": role_id,
+        "competency_id": competency["_id"],
+        "required_level": 4,
+    })
+    db.competency_profiles.insert_one({
+        "_id": ObjectId(),
+        "user_id": official["_id"],
+        "competency_id": competency["_id"],
+        "current_level": 3,
+    })
+
+    response = test_setup["client"].get(
+        "/api/v1/admin/capacity-planning",
+        headers={"Authorization": f"Bearer {test_setup['admin_token']}"},
+    )
+
+    assert response.status_code == 200
+    intervention = response.json()["interventions"][0]
+    assert intervention["target_officials_count"] == 1
+    assert intervention["estimated_training_hours"] is None
+    assert intervention["suggested_cohort_size"] is None
+    assert intervention["recommended_courses_count"] == 0
+    assert intervention["top_resource_title"] is None
+    assert intervention["top_resource_provider"] is None
+
+
+def test_unresolved_user_shows_role_mapping_pending_in_admin_workforce(test_setup):
+    db = test_setup["db"]
+    # Seed unresolved official (role_id is None)
+    unresolved_id = ObjectId()
+    unresolved_user = {
+        "_id": unresolved_id,
+        "email": "unresolved@shikshasetu.test",
+        "full_name": "Unresolved Officer",
+        "access_role": "OFFICIAL",
+        "status": "active",
+        "department": "Unknown Department",
+        "designation": "Specialist",
+        "role_id": None,
+        "created_at": datetime.now(UTC),
+    }
+    db.users.insert_one(unresolved_user)
+
+    headers = {"Authorization": f"Bearer {test_setup['admin_token']}"}
+    client = test_setup["client"]
+
+    workforce_res = client.get("/api/v1/admin/workforce", headers=headers)
+    assert workforce_res.status_code == 200
+    workforce_data = workforce_res.json()
+    unresolved_emp = next((e for e in workforce_data["employees"] if e["id"] == str(unresolved_id)), None)
+    assert unresolved_emp is not None
+    assert unresolved_emp["professional_role"] == "Role Mapping Pending"
+
+    users_res = client.get("/api/v1/admin/users", headers=headers)
+    assert users_res.status_code == 200
+    users_data = users_res.json()
+    unresolved_u = next((u for u in users_data["users"] if u["id"] == str(unresolved_id)), None)
+    assert unresolved_u is not None
+    assert unresolved_u["professional_role"] in ("Unresolved", "Role Mapping Pending")

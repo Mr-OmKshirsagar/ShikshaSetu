@@ -15,6 +15,7 @@ from app.capability_assessments.scoring import (
     calculate_question_score,
 )
 from app.questions import repository as question_repo
+from app.learning_resources.cache import invalidate_recommendations_cache
 
 
 def _database_or_error(database):
@@ -363,13 +364,16 @@ def submit_capability_assessment(
     
     competency_oid = competency["_id"]
     
-    # Create evidence record for this assessment
+    # Create evidence record for this assessment (AUTHORITATIVE)
     # All answers treated as KNOWLEDGE_TEST (MCQ + SCENARIO combined)
     evidence_doc = {
         "user_id": user_oid,
         "competency_id": competency_oid,
         "evidence_type": "KNOWLEDGE_TEST",  # Covers MCQ and SCENARIO
+        "type": "CAPABILITY_ASSESSMENT",
+        "authority": "AUTHORITATIVE",
         "score": normalized_score,  # 1-5 scale
+        "confidence": 0.85,
         "weight": config.knowledge_test_weight,  # 40%
         "source": "capability_assessment",
         "assessment_id": repository.object_id(assessment_id),
@@ -384,23 +388,22 @@ def submit_capability_assessment(
     
     assessment_repo.insert_evidence(database, evidence_doc)
     
-    # Get all evidence for this competency to recalculate profile
+    # Get all authoritative evidence for this competency to recalculate profile
     all_evidence_docs = list(database.competency_evidence.find({
         "user_id": user_oid,
         "competency_id": competency_oid
     }))
     
-    # Aggregate evidence into components
+    # Aggregate only authoritative evidence components (supporting quizzes excluded)
     components = {}
     for evidence in all_evidence_docs:
         evidence_type = evidence.get("evidence_type")
-        # Map evidence type to component
+        # Map formal authoritative evidence type to component
         component_name = {
             "SELF_ASSESSMENT": "self_assessment",
             "KNOWLEDGE_TEST": "knowledge_test",
             "SCENARIO_TEST": "scenario_test",
             "TRAINING": "training_evidence",
-            "QUIZ": "knowledge_test",  # Quiz counts as knowledge test
         }.get(evidence_type)
         
         if component_name:
@@ -461,6 +464,9 @@ def submit_capability_assessment(
             detail="Assessment was already submitted by another request"
         )
     
+    # Invalidate recommendations cache so fresh recommendations derive from updated competency profile
+    invalidate_recommendations_cache(user_id)
+
     # Return submission response
     return {
         "assessment_id": assessment_id,

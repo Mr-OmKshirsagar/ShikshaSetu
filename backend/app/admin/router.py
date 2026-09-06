@@ -140,3 +140,17 @@ def promote_user_to_trainer(
     return service.promote_user_to_trainer(db, user_id)
 
 
+@router.post(
+    "/users/{user_id}/assign-role",
+    response_model=schemas.AdminUserItem,
+    summary="Assign or correct a user's professional role and reconcile competency requirements",
+)
+def assign_user_role(
+    request: Request,
+    user_id: str,
+    payload: schemas.AdminAssignRoleRequest,
+) -> schemas.AdminUserItem:
+    db = _get_db(request)
+    return service.assign_user_role(db, user_id, payload)
+
+

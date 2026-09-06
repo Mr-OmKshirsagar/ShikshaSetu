@@ -29,6 +29,9 @@ def update_profile(request: Request, current_user: dict, payload: UserProfileUpd
         if resolved_role_oid:
             updates["role_id"] = resolved_role_oid
             reconcile_user_competencies(database, current_user["_id"], resolved_role_oid)
+        else:
+            updates["role_id"] = None
+            reconcile_user_competencies(database, current_user["_id"], None)
 
     updates["updated_at"] = datetime.now(UTC)
     try:
@@ -85,9 +88,18 @@ def get_my_evidence(
         comp_code = comp.get("code") if comp else str(c_id)
         comp_name = comp.get("name") if comp else comp_code.replace("_", " ")
 
-        raw_type = str(doc.get("evidence_type", "SUPPORTING")).upper()
-        conf = float(doc.get("confidence", doc.get("evidence_confidence", 0.85 if ("ASSESS" in raw_type or "QUIZ" in raw_type) else 0.3)))
-        is_authoritative = "ASSESS" in raw_type or "QUIZ" in raw_type or conf >= 0.7
+        raw_type = str(doc.get("evidence_type", doc.get("type", "SUPPORTING"))).upper()
+        authority_field = doc.get("authority")
+        if authority_field:
+            is_authoritative = (str(authority_field).upper() == "AUTHORITATIVE")
+            default_conf = 0.85 if is_authoritative else 0.30
+        else:
+            is_authoritative = ("ASSESS" in raw_type or "INITIAL" in raw_type or "BASELINE" in raw_type) and "QUIZ" not in raw_type and "LEARNING" not in raw_type
+            default_conf = 0.85 if is_authoritative else 0.30
+
+        conf = float(doc.get("confidence", doc.get("evidence_confidence", default_conf)))
+        if not authority_field and "QUIZ" not in raw_type and "LEARNING" not in raw_type:
+            is_authoritative = is_authoritative or conf >= 0.7
 
         # Source-aware score type determination
         score_type = doc.get("score_type")

@@ -38,9 +38,9 @@ def get_quiz_by_id(database: Database, quiz_id: str, user_id: str) -> dict | Non
     user_oid = object_id(user_id)
     user_id_str = str(user_id)
 
-    # Query quiz by ObjectId or string ID
-    query_quiz = {"$or": [{"_id": quiz_oid}, {"_id": str(quiz_id)}]} if quiz_oid else {"_id": str(quiz_id)}
-    quiz = database.quizzes.find_one(query_quiz)
+    quiz = database.quizzes.find_one({"_id": quiz_oid}) if quiz_oid else None
+    if not quiz:
+        quiz = database.quizzes.find_one({"_id": str(quiz_id)})
     if not quiz:
         return None
 

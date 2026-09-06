@@ -159,7 +159,7 @@ export function OfficialLearning({
           </div>
           <p className="text-slate-600 leading-relaxed">
             Completing self-paced modules records verifiable supporting evidence in your capability ledger. 
-            Formal competency ratings and skill gap recalculations require authoritative validation through AI Quizzes or Proctored Assessments.
+            Formal competency ratings and skill gap recalculations require authoritative validation through Formal Capability Assessments or Adaptive Assessments.
           </p>
         </div>
       </div>

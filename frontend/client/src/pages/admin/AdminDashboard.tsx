@@ -125,7 +125,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             {data?.total_officials != null ? <NumberReveal value={data.total_officials} /> : "—"}
           </div>
           <div className="mt-1 text-[11px] text-slate-400 font-medium">
-            Across {data?.departments_count ?? 1} ministries/departments
+            Across {data?.departments_count ?? 0} ministries/departments
           </div>
         </div>
 
@@ -138,11 +138,11 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             {data?.average_capability_level != null ? (
               <NumberReveal value={data.average_capability_level} decimals={1} suffix=" / 5.0" />
             ) : (
-              "3.2 / 5.0"
+              "Unavailable"
             )}
           </div>
           <div className="mt-1 text-[11px] text-slate-400 font-medium">
-            {data?.assessment_coverage_pct ?? 75}% assessment coverage
+            {data?.assessment_coverage_pct ?? 0}% assessment coverage
           </div>
         </div>
 
@@ -195,11 +195,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </div>
 
           <div className="mt-5 space-y-4">
-            {(data?.domain_capability_breakdown || [
-              { domain: "CORE", average_level: 3.4, count: 12 },
-              { domain: "DOMAIN", average_level: 3.1, count: 18 },
-              { domain: "BEHAVIORAL", average_level: 3.6, count: 10 },
-            ]).map((d) => {
+            {(data?.domain_capability_breakdown || []).map((d) => {
               const pct = Math.min(100, Math.round((d.average_level / 5.0) * 100));
               return (
                 <div key={d.domain} className="space-y-1.5">

@@ -418,7 +418,8 @@ class TestQuizSystem:
         assert data["total_questions"] == 2
         assert len(data["explanations"]) == 2
         assert data["explanations"][0]["is_correct"] is True
-        assert data["competency"]["competency_level_after"] == 4.5
+        assert data["competency"]["competency_level_after"] == 2.5
+        assert data["competency"]["improvement"] == 0.0
 
     def test_09_quiz_submission_with_incorrect_answers(self, quiz_test_env):
         """9. Quiz submission with incorrect answers (0% score)."""
@@ -445,7 +446,8 @@ class TestQuizSystem:
         data = sub_res.json()
         assert data["percentage"] == 0.0
         assert data["correct_count"] == 0
-        assert data["competency"]["competency_level_after"] == 1.5
+        assert data["competency"]["competency_level_after"] == 2.5
+        assert data["competency"]["improvement"] == 0.0
 
     def test_10_invalid_question_id_handling(self, quiz_test_env):
         """10. Invalid question ID / malformed answer handling."""
@@ -522,8 +524,8 @@ class TestQuizSystem:
         assert evidence["competency_id"] == quiz_test_env["comp_id"]
         assert evidence["source"] == "AI_QUIZ"
 
-    def test_13_competency_profile_update_after_submission(self, quiz_test_env):
-        """13. Competency profile update after successful submission."""
+    def test_13_competency_profile_not_mutated_by_quiz(self, quiz_test_env):
+        """13. Supporting evidence invariant: Quiz submission must NOT mutate competency profile."""
         client = quiz_test_env["client"]
         db = quiz_test_env["db"]
         headers_a = quiz_test_env["headers_a"]
@@ -546,14 +548,12 @@ class TestQuizSystem:
             ]
         })
 
-        # Check profile updated
+        # Check profile was NOT created/mutated by supporting quiz
         profile = db.competency_profiles.find_one({"user_id": ObjectId(user_a_id), "competency_id": quiz_test_env["comp_id"]})
-        assert profile is not None
-        assert profile["level"] == 4.5
-        assert profile["confidence"] == 0.9
+        assert profile is None  # Remains unmutated
 
     def test_14_skill_gap_calculation_after_submission(self, quiz_test_env):
-        """14. Skill-gap calculation returned after quiz submission."""
+        """14. Skill-gap calculation returned after quiz submission reflects baseline."""
         client = quiz_test_env["client"]
         headers_a = quiz_test_env["headers_a"]
         material_a = quiz_test_env["material_a_id"]
@@ -576,8 +576,8 @@ class TestQuizSystem:
         gap_data = sub_res.json()["skill_gap"]
         assert gap_data["competency_code"] == "TECH_PYTHON"
         assert gap_data["required_level"] == 4.0
-        assert gap_data["current_level"] == 4.5
-        assert gap_data["gap_after"] == 0.0
+        assert gap_data["current_level"] == 2.5
+        assert gap_data["gap_after"] == 1.5
 
     def test_15_material_id_format_validation(self, quiz_test_env):
         """15. Material ID validation (invalid format)."""

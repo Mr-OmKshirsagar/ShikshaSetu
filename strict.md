@@ -14,7 +14,7 @@ Your responsibility is to implement the **backend + AI layer for Round 1**.
 
 For Round 1:
 
-**Abhishek**
+
 
 * Backend
 * Database
@@ -32,15 +32,7 @@ For Round 1:
 * Backend testing
 * Integration
 
-**Sanika**
 
-* Works independently on UI/frontend
-* PPT/presentation
-* Only coordinate with backend when API contracts/data structures are required.
-
-Do NOT assign backend implementation tasks to other team members.
-
----
 
 # 2. MOST IMPORTANT RULE
 

@@ -373,8 +373,18 @@ class AdaptiveAssessmentService:
                 detail="Adaptive assessment session not found or access unauthorized",
             )
 
+        if session.get("evidence_id") is not None or session.get("completed_at") is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Adaptive assessment session has already been finalized",
+            )
+
         competency_oid = session.get("competency_id")
         competency_code = session["competency_code"]
+        if not competency_oid:
+            c_doc = self.db.competencies.find_one({"code": competency_code})
+            if c_doc:
+                competency_oid = c_doc["_id"]
         comp_name = session.get("competency_name", competency_code)
         now = datetime.now(UTC)
 

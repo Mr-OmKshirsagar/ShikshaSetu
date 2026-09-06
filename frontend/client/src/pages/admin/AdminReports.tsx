@@ -238,7 +238,7 @@ export function AdminReports({ onNavigate }: AdminReportsProps) {
           <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
             <span className="text-slate-400 font-bold uppercase text-[10px]">Supporting Evidence</span>
             <div className="text-base font-black text-[#ef7e37] mt-1">
-              <NumberReveal value={data?.compliance_summary?.supporting_evidence_records ?? 12} suffix=" Recorded" />
+              <NumberReveal value={data?.compliance_summary?.supporting_evidence_records ?? 0} suffix=" Recorded" />
             </div>
           </div>
         </div>

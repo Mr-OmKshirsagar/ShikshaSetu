@@ -58,49 +58,56 @@ class RecommendationService:
         """
         from bson import ObjectId
 
-        # 1. Get user's skill gaps
+        # 1. Check user and resolved professional role
         user = self.db.users.find_one({"$or": [{"_id": ObjectId(user_id) if ObjectId.is_valid(user_id) else None}, {"_id": user_id}]})
-        user_role = (user.get("designation") or user.get("role") or "Statistical Officer") if user else "Statistical Officer"
+        user_role = (user.get("designation") or user.get("role") or "Unresolved") if user else "Unresolved"
+
+        role_doc = None
+        if user and user.get("role_id"):
+            role_doc = self.db.roles.find_one({"_id": user["role_id"]})
+        if not role_doc and user:
+            from app.roles.resolver import resolve_role_for_user
+            resolved_role_id = resolve_role_for_user(self.db, user.get("department"), user.get("designation"))
+            if resolved_role_id:
+                role_doc = self.db.roles.find_one({"_id": resolved_role_id})
+
+        if not role_doc:
+            return RecommendationResponse(
+                user_id=user_id,
+                role="Role Mapping Pending",
+                total_recommendations=0,
+                recommendations=[],
+                metadata={"status": "ROLE_MAPPING_PENDING", "reason": "Role mapping pending: No active professional role assigned."},
+            )
 
         gaps = []
         try:
             gap_response = gaps_service.calculate_skill_gaps(self.db, user_id)
-            # Convert Pydantic models to dicts
-            gaps = [gap.model_dump() if hasattr(gap, 'model_dump') else gap for gap in gap_response.gaps]
+            all_gaps = [gap.model_dump() if hasattr(gap, 'model_dump') else gap for gap in gap_response.gaps]
+            # Filter strictly for ACTIVE gaps (deficit > 0)
+            gaps = [g for g in all_gaps if (g.get("gap") or 0.0) > 0.0 and g.get("gap_category") != "NO_GAP"]
         except Exception:
             gaps = []
 
         if not gaps:
-            # Generate foundational candidate gaps from active competencies
-            active_comps = list(self.db.competencies.find({"framework_status": {"$ne": "DEPRECATED"}}).limit(10))
-            for comp in active_comps:
-                ccode = comp.get("code") or comp.get("competency_code")
-                cname = comp.get("name") or comp.get("competency_name")
-                if not ccode or not cname:
-                    continue
-                gaps.append({
-                    "competency_id": str(comp["_id"]),
-                    "competency_code": ccode,
-                    "competency_name": cname,
-                    "domain": comp.get("domain", "General"),
-                    "required_level": 3.0,
-                    "current_level": None,
-                    "gap": 3.0,
-                    "gap_category": "MEDIUM",
-                    "priority": 2,
-                    "priority_score": 0.75,
-                    "confidence": 0.0,
-                    "assessment_status": "NOT_ASSESSED",
-                })
+            return RecommendationResponse(
+                user_id=user_id,
+                role=role_doc.get("role_name", user_role),
+                total_recommendations=0,
+                recommendations=[],
+                metadata={"reason": "All mapped competencies are currently at or above required levels for your role."},
+            )
 
-        # 3. Generate candidates for all gaps
+        # 3. Generate candidates for active gaps
         all_candidates: Dict[str, List[CandidateResource]] = (
             self.candidate_service.generate_candidates_for_gaps(gaps, user_role)
         )
 
         # 4. Flatten and deduplicate candidates across all gaps
+        # Also track all gaps addressed by each unique resource
         flattened_candidates: List[Tuple[CandidateResource, Dict[str, Any]]] = []
         seen_resources: Dict[str, float] = {}  # resource_id -> best_priority
+        resource_addressed_codes: Dict[str, List[str]] = {}  # resource_id -> list of competency_codes
 
         for gap in gaps:
             candidates = all_candidates.get(gap["competency_code"], [])
@@ -108,13 +115,19 @@ class RecommendationService:
             for candidate in candidates:
                 resource_id = str(candidate.resource.get("_id"))
 
+                # Track all competency codes addressed by this resource
+                if resource_id not in resource_addressed_codes:
+                    resource_addressed_codes[resource_id] = []
+                if gap["competency_code"] not in resource_addressed_codes[resource_id]:
+                    resource_addressed_codes[resource_id].append(gap["competency_code"])
+
                 # Only include once per resource, with the highest priority gap
                 if resource_id not in seen_resources:
                     flattened_candidates.append((candidate, gap))
-                    seen_resources[resource_id] = gap["priority_score"]
+                    seen_resources[resource_id] = gap.get("priority_score", 0.5)
                 else:
                     # Update if this gap has higher priority
-                    if gap["priority_score"] > seen_resources[resource_id]:
+                    if gap.get("priority_score", 0.5) > seen_resources[resource_id]:
                         # Remove old entry and add new one
                         flattened_candidates = [
                             (c, g)
@@ -122,7 +135,7 @@ class RecommendationService:
                             if str(c.resource.get("_id")) != resource_id
                         ]
                         flattened_candidates.append((candidate, gap))
-                        seen_resources[resource_id] = gap["priority_score"]
+                        seen_resources[resource_id] = gap.get("priority_score", 0.5)
 
         if not flattened_candidates:
             # No candidates found
@@ -131,7 +144,7 @@ class RecommendationService:
                 role=user_role or "Unknown",
                 total_recommendations=0,
                 recommendations=[],
-                metadata={"reason": "No mapped learning resources available"},
+                metadata={"reason": "No mapped learning resources are currently available for your active gaps."},
             )
 
         # 5. Score all candidates
@@ -163,12 +176,15 @@ class RecommendationService:
         recommendations: List[LearningRecommendation] = []
 
         for rank, (candidate, score, gap) in enumerate(scored_candidates, start=1):
+            resource_id = str(candidate.resource.get("_id"))
+            addressed_codes = resource_addressed_codes.get(resource_id, [gap["competency_code"]])
             recommendation = self._build_recommendation(
                 rank=rank,
                 candidate=candidate,
                 score=score,
                 gap=gap,
                 user_role=user_role,
+                addressed_codes=addressed_codes,
             )
             recommendations.append(recommendation)
 
@@ -192,10 +208,12 @@ class RecommendationService:
         score: RecommendationScore,
         gap: Dict[str, Any],
         user_role: Optional[str] = None,
+        addressed_codes: Optional[List[str]] = None,
     ) -> LearningRecommendation:
         """Build a complete LearningRecommendation object."""
 
         resource = candidate.resource
+        addressed_list = addressed_codes or [gap["competency_code"]]
 
         # Build resource model
         resource_model = LearningResource(
@@ -257,6 +275,9 @@ class RecommendationService:
             required_level=gap.get("required_level"),
             gap=gap.get("gap", 0),
             score=score.total_score,
+            why_recommended=explanation.why_recommended,
+            addressed_gaps_count=len(addressed_list),
+            addressed_competency_codes=addressed_list,
             explanation=explanation,
             source_verification=resource.get("source", {}).get(
                 "verification_status", "UNKNOWN"
@@ -271,8 +292,9 @@ class RecommendationService:
     ) -> RecommendationExplanation:
         """Build explanation for why this resource was recommended."""
 
-        # Generate summary
+        # Generate summary and deterministic why_recommended
         summary = self._generate_summary(candidate, gap)
+        why_recommended = self._generate_why_recommended(candidate, gap)
 
         # Build score breakdown
         score_components = [
@@ -286,18 +308,46 @@ class RecommendationService:
         ]
 
         # Provider note
+        provider = candidate.resource.get("provider", "")
         provider_note = None
-        if candidate.resource.get("source", {}).get("verification_status") == "TENTATIVE":
-            provider_note = "This resource is from an official calendar with tentative dates; verification pending."
+        if provider == "IGOT":
+            provider_note = "iGOT Karmayogi (Curated Catalogue)"
+        elif provider == "NSSTA":
+            if candidate.resource.get("source", {}).get("verification_status") == "TENTATIVE":
+                provider_note = "NSSTA Training Programme (Official Calendar — Tentative Schedule)"
+            else:
+                provider_note = "NSSTA Training Programme (MoSPI Official Calendar)"
+
+        priority_str = gap.get("gap_category", "MEDIUM").upper()
 
         return RecommendationExplanation(
             summary=summary,
+            why_recommended=why_recommended,
             competency_gap=f"{gap['competency_code']}",
             current_level=gap.get("current_level"),
             required_level=gap.get("required_level"),
             gap_size=gap.get("gap", 0),
+            priority=priority_str,
             score_breakdown=score_components,
             provider_note=provider_note,
+        )
+
+    def _generate_why_recommended(
+        self, candidate: CandidateResource, gap: Dict[str, Any]
+    ) -> str:
+        """Generate deterministic why_recommended string."""
+        comp_name = candidate.competency_name or gap.get("competency_code", "Competency")
+        current_lvl = gap.get("current_level")
+        current_str = f"{current_lvl:.1f}" if current_lvl is not None else "Unassessed (0.0)"
+        req_lvl = gap.get("required_level", 0.0)
+        gap_val = gap.get("gap", 0.0)
+        priority = gap.get("gap_category", "MEDIUM").upper()
+        provider = candidate.resource.get("provider", "Curated")
+        resource_title = candidate.resource.get("title", "Mapped Resource")
+
+        return (
+            f"Your {comp_name} competency is at level {current_str} against the required role level of {req_lvl:.1f} "
+            f"(gap: {gap_val:.1f}, priority: {priority}). '{resource_title}' is explicitly mapped to {gap['competency_code']} ({provider})."
         )
 
     def _generate_summary(
@@ -307,7 +357,7 @@ class RecommendationService:
 
         resource_title = candidate.resource.get("title", "Unknown")
         provider = candidate.resource.get("provider", "Unknown")
-        gap_size_cat = gap["gap_category"].upper()
+        gap_size_cat = gap.get("gap_category", "medium").upper()
         
         current_level = gap.get("current_level") or 0.0
         required_level = gap.get("required_level", 0.0)

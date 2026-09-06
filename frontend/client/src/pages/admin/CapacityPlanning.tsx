@@ -59,26 +59,30 @@ export function CapacityPlanning({ onNavigate }: CapacityPlanningProps) {
         </button>
       </div>
 
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+        {data?.data_basis || "Planning values are shown only when supported by stored gap and resource data."}
+      </div>
+
       {/* Summary KPI Row */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-[#e0daef] bg-white p-5 shadow-sm anim-card-enter stagger-1">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Total Target Personnel
+            Officials With Observed Gaps
           </div>
           <div className="mt-2 text-3xl font-extrabold tracking-tight text-[#123057]">
             <NumberReveal value={data?.total_officials_requiring_intervention ?? 0} suffix=" Officials" />
           </div>
-          <div className="mt-1 text-xs text-slate-400 font-medium">Across planned cohorts</div>
+          <div className="mt-1 text-xs text-slate-400 font-medium">Based on assessed role requirements</div>
         </div>
 
         <div className="rounded-2xl border border-[#e0daef] bg-white p-5 shadow-sm anim-card-enter stagger-2">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Estimated Training Hours
+            Resource Duration Basis
           </div>
           <div className="mt-2 text-3xl font-extrabold tracking-tight text-[#6d5bc3]">
-            <NumberReveal value={data?.total_training_hours_required ?? 0} suffix=" Hours" />
+            {data?.total_training_hours_required == null ? "Unavailable" : <NumberReveal value={data.total_training_hours_required} suffix=" Hours" />}
           </div>
-          <div className="mt-1 text-xs text-slate-400 font-medium">Curriculum commitment</div>
+          <div className="mt-1 text-xs text-slate-400 font-medium">Stored resource duration only</div>
         </div>
 
         <div className="rounded-2xl border border-[#e0daef] bg-white p-5 shadow-sm anim-card-enter stagger-3">
@@ -88,7 +92,7 @@ export function CapacityPlanning({ onNavigate }: CapacityPlanningProps) {
           <div className="mt-2 text-3xl font-extrabold tracking-tight text-[#087f76]">
             <NumberReveal value={data?.high_priority_initiatives_count ?? 0} />
           </div>
-          <div className="mt-1 text-xs text-slate-400 font-medium">High-impact capability targets</div>
+          <div className="mt-1 text-xs text-slate-400 font-medium">Derived from observed gap severity</div>
         </div>
       </div>
 
@@ -129,26 +133,26 @@ export function CapacityPlanning({ onNavigate }: CapacityPlanningProps) {
                 <div>
                   <span className="text-slate-400 font-semibold">Suggested Cohort Size:</span>
                   <div className="font-bold text-[#123057] mt-0.5">
-                    <NumberReveal value={item.suggested_cohort_size} suffix=" per batch" />
+                    {item.suggested_cohort_size == null ? "Not configured" : <NumberReveal value={item.suggested_cohort_size} suffix=" per batch" />}
                   </div>
                 </div>
                 <div>
                   <span className="text-slate-400 font-semibold">Estimated Hours:</span>
                   <div className="font-bold text-[#123057] mt-0.5">
-                    <NumberReveal value={item.estimated_training_hours} suffix=" hrs" />
+                    {item.estimated_training_hours == null ? "Duration data unavailable" : <NumberReveal value={item.estimated_training_hours} suffix=" hrs" />}
                   </div>
                 </div>
                 <div>
                   <span className="text-slate-400 font-semibold">Top Resource Provider:</span>
-                  <div className="font-bold text-[#087f76] mt-0.5">{item.top_resource_provider || "iGOT"}</div>
+                  <div className="font-bold text-[#087f76] mt-0.5">{item.top_resource_provider || "No mapped resource"}</div>
                 </div>
               </div>
 
-              {item.top_resource_title && (
+              {item.top_resource_title ? (
                 <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
                   <span className="font-bold text-slate-700">Recommended Curriculum:</span> {item.top_resource_title}
                 </div>
-              )}
+              ) : <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">No mapped learning resource available</div>}
             </div>
           ))}
         </div>

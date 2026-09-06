@@ -22,14 +22,17 @@ def resolve_role_for_user(
     their Department and Designation.
     
     Resolution hierarchy:
-    1. Exact match on designation within matching department
-    2. Case-insensitive regex match on designation within matching department
-    3. Match on designation across all roles
-    4. Match on department default role
-    5. Fallback to default STATISTICAL_OFFICER or first active role
+    1. Exact or normalized match on designation within matching department
+    2. Global match on designation across all roles (if department is absent or unmapped)
+
+    Returns None if no configured role mapping matches (UNRESOLVED).
+    NEVER silently falls back to STATISTICAL_OFFICER or arbitrary default roles.
     """
     dept_str = (department or "").strip().lower()
     desig_str = (designation or "").strip().lower()
+
+    if not desig_str and not dept_str:
+        return None
 
     roles = list(database.roles.find({"status": "active"}))
     if not roles:
@@ -37,52 +40,34 @@ def resolve_role_for_user(
     if not roles:
         return None
 
-    # Step 1: Match department + designation exactly or in designations list
-    for r in roles:
-        r_dept = (r.get("department") or "").strip().lower()
-        r_dept_code = (r.get("department_code") or "").strip().lower()
-        dept_match = (
-            dept_str == r_dept
-            or (dept_str and dept_str in r_dept)
-            or (r_dept and r_dept in dept_str)
-            or (r_dept_code and r_dept_code in dept_str)
-        )
-        if dept_match:
-            designations = [d.strip().lower() for d in r.get("designations", [])]
-            if desig_str in designations or (r.get("role_name", "").strip().lower() == desig_str):
-                return r["_id"]
-            for d in designations:
-                if desig_str and (desig_str in d or d in desig_str):
+    # Step 1: Match department + designation explicitly
+    if dept_str and desig_str:
+        for r in roles:
+            r_dept = (r.get("department") or "").strip().lower()
+            r_dept_code = (r.get("department_code") or "").strip().lower()
+            dept_match = (
+                dept_str == r_dept
+                or (dept_str and dept_str in r_dept)
+                or (r_dept and r_dept in dept_str)
+                or (r_dept_code and r_dept_code in dept_str)
+            )
+            if dept_match:
+                designations = [d.strip().lower() for d in r.get("designations", [])]
+                if desig_str in designations or (r.get("role_name", "").strip().lower() == desig_str) or (r.get("role_code", "").strip().lower() == desig_str):
                     return r["_id"]
+                for d in designations:
+                    if desig_str == d or (len(desig_str) > 3 and desig_str in d):
+                        return r["_id"]
 
-    # Step 2: Match designation across any department
-    for r in roles:
-        designations = [d.strip().lower() for d in r.get("designations", [])]
-        if desig_str in designations or (r.get("role_name", "").strip().lower() == desig_str):
-            return r["_id"]
-        for d in designations:
-            if desig_str and (desig_str in d or d in desig_str):
+    # Step 2: Match designation across active roles if unambiguous
+    if desig_str:
+        for r in roles:
+            designations = [d.strip().lower() for d in r.get("designations", [])]
+            if desig_str in designations or (r.get("role_name", "").strip().lower() == desig_str) or (r.get("role_code", "").strip().lower() == desig_str):
                 return r["_id"]
 
-    # Step 3: Match department only (take first matching role in department)
-    for r in roles:
-        r_dept = (r.get("department") or "").strip().lower()
-        r_dept_code = (r.get("department_code") or "").strip().lower()
-        if dept_str and (
-            dept_str == r_dept
-            or dept_str in r_dept
-            or r_dept in dept_str
-            or (r_dept_code and r_dept_code in dept_str)
-        ):
-            return r["_id"]
-
-    # Step 4: Fallback to STATISTICAL_OFFICER if present
-    for r in roles:
-        if r.get("role_code") == "STATISTICAL_OFFICER":
-            return r["_id"]
-
-    # Step 5: Fallback to first role
-    return roles[0]["_id"]
+    # No silent fallback! Unresolved role returns None.
+    return None
 
 
 def reconcile_user_competencies(
@@ -100,11 +85,30 @@ def reconcile_user_competencies(
     4. Out-of-scope competency profiles are marked 'inactive' so they do not pollute active skill gaps.
     """
     u_oid = _object_id(user_id)
-    r_oid = _object_id(new_role_id)
-    if not u_oid or not r_oid:
-        return {"reconciled": False, "reason": "Invalid user_id or role_id"}
-
     now = datetime.now(UTC)
+
+    if not u_oid:
+        return {"reconciled": False, "reason": "Invalid user_id"}
+
+    if new_role_id is None:
+        database.users.update_one(
+            {"_id": u_oid},
+            {"$set": {"role_id": None, "updated_at": now}}
+        )
+        database.competency_profiles.update_many(
+            {"user_id": u_oid, "status": "active"},
+            {"$set": {"status": "inactive", "updated_at": now}}
+        )
+        try:
+            from app.learning_resources.cache import invalidate_recommendations_cache
+            invalidate_recommendations_cache(str(u_oid))
+        except Exception:
+            pass
+        return {"reconciled": True, "role_id": None, "deactivated_all": True}
+
+    r_oid = _object_id(new_role_id)
+    if not r_oid:
+        return {"reconciled": False, "reason": "Invalid role_id"}
 
     # 1. Update user's role_id
     database.users.update_one(

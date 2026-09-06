@@ -228,13 +228,15 @@ class QuizService:
         competency_doc = self.db.competencies.find_one({"code": competency_code})
         competency_oid = ObjectId(competency_doc["_id"]) if competency_doc else ObjectId()
 
-        # Create evidence
+        # Create supporting evidence record (confidence = 0.30, authority = SUPPORTING)
         evidence_doc = {
             "_id": ObjectId(),
             "user_id": user_oid,
             "competency_code": competency_code,
             "competency_id": competency_oid,
             "evidence_type": EvidenceType.QUIZ,
+            "type": "PRACTICE_QUIZ",
+            "authority": "SUPPORTING",
             "source": "AI_QUIZ",
             "quiz_id": ObjectId(quiz_id),
             "attempt_id": ObjectId(attempt_id),
@@ -243,7 +245,9 @@ class QuizService:
             "quiz_percentage": percentage,
             "score": percentage,  # Native percentage
             "normalized_level": round(min(5.0, max(1.0, (percentage / 100.0) * 5.0)), 1),
-            "weight": 1.0,  # Quiz evidence weight (can be configured)
+            "confidence": 0.30,
+            "weight": 0.30,  # Supporting evidence weight
+            "notes": "Self-service quiz practice recorded as supporting evidence.",
             "created_at": now,
             "metadata": {
                 "material_id": str(quiz.get("material_id") or ""),
@@ -254,22 +258,15 @@ class QuizService:
         }
         insert_evidence(self.db, evidence_doc)
 
-        # Update competency profile (deterministic rule)
-        competency_after = self._update_competency_deterministic(
-            user_oid,
-            competency_code,
-            percentage,
-        )
+        # Core Invariant: Supporting evidence (quizzes) MUST NOT modify the authoritative competency profile.
+        # Competency profile remains unchanged until an authoritative assessment is completed.
+        competency_after = {
+            "level": competency_before["level"],
+            "confidence": competency_before["confidence"],
+        }
 
-        try:
-            from app.learning_resources.cache import invalidate_recommendations_cache
-            invalidate_recommendations_cache(str(user_oid))
-        except Exception:
-            pass
-
-        # Get skill gap before and after
+        # Skill gap remains unchanged (Supporting evidence does NOT mutate gap)
         skill_gap_before = self._calculate_skill_gap(user_oid, competency_code, competency_before)
-        skill_gap_after = self._calculate_skill_gap(user_oid, competency_code, competency_after)
 
         # Build explanations
         explanations = []
@@ -302,14 +299,14 @@ class QuizService:
                 "competency_level_after": competency_after["level"],
                 "confidence_before": competency_before["confidence"],
                 "confidence_after": competency_after["confidence"],
-                "improvement": round(competency_after["level"] - competency_before["level"], 2),
+                "improvement": 0.0,
             },
             "skill_gap": {
                 "competency_code": competency_code,
                 "current_level": competency_after["level"],
-                "required_level": skill_gap_after["required_level"],
+                "required_level": skill_gap_before["required_level"],
                 "gap_before": skill_gap_before["gap"],
-                "gap_after": skill_gap_after["gap"],
+                "gap_after": skill_gap_before["gap"],
             },
             "explanations": explanations,
             "submitted_at": now,
@@ -319,7 +316,7 @@ class QuizService:
         """Get current competency level and confidence for a user."""
         competency = self.db.competencies.find_one({"code": competency_code})
         if not competency:
-            return {"level": 2.5, "confidence": 0.5}  # Default middle value
+            return {"level": 2.5, "confidence": 0.5}
 
         competency_oid = ObjectId(competency["_id"]) if isinstance(competency["_id"], str) else competency["_id"]
         
@@ -331,9 +328,13 @@ class QuizService:
         if not profile:
             return {"level": 2.5, "confidence": 0.5}
 
+        level = profile.get("current_level")
+        if level is None:
+            level = profile.get("level", 2.5)
+
         return {
-            "level": profile.get("level", 2.5),
-            "confidence": profile.get("confidence", 0.5),
+            "level": float(level),
+            "confidence": float(profile.get("confidence", 0.5)),
         }
 
     def _update_competency_deterministic(
@@ -343,49 +344,11 @@ class QuizService:
         quiz_percentage: float,
     ) -> dict:
         """
-        Update competency profile using deterministic rule.
-        
-        Formula:
-        - 0-39%: Weak (level 1.5, confidence 0.3)
-        - 40-59%: Developing (level 2.5, confidence 0.5)
-        - 60-79%: Competent (level 3.5, confidence 0.7)
-        - 80-100%: Strong (level 4.5, confidence 0.9)
-        
-        This is a conservative approach:
-        - Does not blindly overwrite existing profile
-        - Creates evidence that supports future recalculation
-        - Confidence is bounded based on quiz size
+        Deprecated: In ShikshaSetu evidence governance, quizzes are Supporting Evidence
+        and do NOT directly mutate competency_profiles.
+        Returns the current competency state without modifying the profile.
         """
-        if quiz_percentage < 40:
-            new_level = 1.5
-            new_confidence = 0.3
-        elif quiz_percentage < 60:
-            new_level = 2.5
-            new_confidence = 0.5
-        elif quiz_percentage < 80:
-            new_level = 3.5
-            new_confidence = 0.7
-        else:
-            new_level = 4.5
-            new_confidence = 0.9
-
-        competency = self.db.competencies.find_one({"code": competency_code})
-        if not competency:
-            return {"level": new_level, "confidence": new_confidence}
-
-        competency_oid = ObjectId(competency["_id"]) if isinstance(competency["_id"], str) else competency["_id"]
-
-        # Upsert profile (creates if not exists, updates if exists)
-        update_doc = {
-            "level": new_level,
-            "confidence": new_confidence,
-            "last_updated_at": datetime.utcnow(),
-            "last_evidence_type": EvidenceType.QUIZ,
-        }
-
-        upsert_profile(self.db, user_id, competency_oid, update_doc)
-
-        return {"level": new_level, "confidence": new_confidence}
+        return self._get_current_competency(user_id, competency_code)
 
     def _calculate_skill_gap(
         self,

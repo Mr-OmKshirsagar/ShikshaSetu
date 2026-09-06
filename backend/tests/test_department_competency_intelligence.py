@@ -765,12 +765,11 @@ def test_12_admin_analytics_respects_department_and_active_gaps(env):
 
 
 def test_13_invalid_department_designation_fails_safely(env):
-    """TEST 13: Invalid department/designation combination fails safely or falls back gracefully."""
+    """TEST 13: Invalid department/designation combination fails safely and returns None (unresolved)."""
     db = env["db"]
     role_id = resolve_role_for_user(db, "Unknown Alien Department", "Galactic Commander")
-    # Must return fallback role rather than crashing
-    assert role_id is not None
-    assert ObjectId.is_valid(role_id)
+    # Must return None rather than silently assigning an unrelated default role
+    assert role_id is None
 
 
 def test_14_no_user_silently_forced_to_statistical_officer(env):

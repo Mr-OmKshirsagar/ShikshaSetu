@@ -98,7 +98,7 @@ export function WorkforceOverview({ onNavigate }: WorkforceOverviewProps) {
             Departments
           </div>
           <div className="mt-2 text-3xl font-extrabold tracking-tight text-[#6d5bc3]">
-            <NumberReveal value={data?.department_breakdown?.length ?? 1} />
+            <NumberReveal value={data?.department_breakdown?.length ?? 0} />
           </div>
           <div className="mt-1 text-xs text-slate-400 font-medium">Ministries represented</div>
         </div>

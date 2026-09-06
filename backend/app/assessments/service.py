@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from app.assessments import repository
 from app.assessments.schemas import AssessmentAnswer, AssessmentScoringConfig, QuestionType, SubmitAssessmentRequest
 from app.assessments.scoring import prototype_confidence, score_ratio, weighted_competency_score
+from app.learning_resources.cache import invalidate_recommendations_cache
 
 
 def database_or_error(database):
@@ -164,6 +165,7 @@ def submit_assessment(database, user_id: str, attempt_id: str, submission: Submi
     updated_attempt = repository.submit_attempt(database, attempt_id, user_id, update)
     if updated_attempt is None:
         raise HTTPException(status_code=409, detail="Assessment attempt is already submitted")
+    invalidate_recommendations_cache(user_id)
     return {"attempt_id": str(updated_attempt["_id"]), "status": updated_attempt["status"], "competency_results": results}
 
 

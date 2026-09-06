@@ -81,7 +81,7 @@ export function CompetencyAnalytics({ onNavigate }: CompetencyAnalyticsProps) {
             Total Framework Competencies
           </div>
           <div className="mt-2 text-3xl font-extrabold tracking-tight text-[#123057]">
-            <NumberReveal value={data?.total_competencies ?? 42} />
+            <NumberReveal value={data?.total_competencies ?? 0} />
           </div>
           <div className="mt-1 text-xs text-slate-400 font-medium">Standardized taxonomy</div>
         </div>
@@ -91,7 +91,7 @@ export function CompetencyAnalytics({ onNavigate }: CompetencyAnalyticsProps) {
             Core Domain
           </div>
           <div className="mt-2 text-3xl font-extrabold tracking-tight text-[#6d5bc3]">
-            <NumberReveal value={data?.domain_breakdown?.find((d) => d.domain === "CORE")?.count ?? 12} />
+            <NumberReveal value={data?.domain_breakdown?.find((d) => d.domain === "CORE")?.count ?? 0} />
           </div>
           <div className="mt-1 text-xs text-slate-400 font-medium">Foundational civil service skills</div>
         </div>
@@ -101,7 +101,7 @@ export function CompetencyAnalytics({ onNavigate }: CompetencyAnalyticsProps) {
             Domain-Specific
           </div>
           <div className="mt-2 text-3xl font-extrabold tracking-tight text-[#087f76]">
-            <NumberReveal value={data?.domain_breakdown?.find((d) => d.domain === "DOMAIN")?.count ?? 18} />
+            <NumberReveal value={data?.domain_breakdown?.find((d) => d.domain === "DOMAIN")?.count ?? 0} />
           </div>
           <div className="mt-1 text-xs text-slate-400 font-medium">Technical & statistical capabilities</div>
         </div>
@@ -111,7 +111,7 @@ export function CompetencyAnalytics({ onNavigate }: CompetencyAnalyticsProps) {
             Behavioral
           </div>
           <div className="mt-2 text-3xl font-extrabold tracking-tight text-[#ef7e37]">
-            <NumberReveal value={data?.domain_breakdown?.find((d) => d.domain === "BEHAVIORAL")?.count ?? 12} />
+            <NumberReveal value={data?.domain_breakdown?.find((d) => d.domain === "BEHAVIORAL")?.count ?? 0} />
           </div>
           <div className="mt-1 text-xs text-slate-400 font-medium">Leadership & public service</div>
         </div>

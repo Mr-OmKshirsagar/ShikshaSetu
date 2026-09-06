@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
-  Brain,
-  Lightbulb,
   RefreshCw,
   Sparkles,
-  TrendingUp,
   Zap,
   ArrowRight,
 } from "lucide-react";
@@ -43,13 +40,13 @@ export function EmergingSkills({ onNavigate }: EmergingSkillsProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-900 anim-badge-pop">
-            <Zap size={13} /> Emerging Capability Needs
+            <Zap size={13} /> Skill Gap Signals
           </div>
           <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-            Strategic & Emerging Capabilities
+            Observed Competency Gaps
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Data science, analytical modernization, and high-deficit domain requirements prioritized for administrative focus.
+            Current-state signals based on assessed competency profiles and stored role requirements.
           </p>
         </div>
 
@@ -61,6 +58,10 @@ export function EmergingSkills({ onNavigate }: EmergingSkillsProps) {
         </button>
       </div>
 
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+        {data?.data_basis || "Historical trend unavailable - insufficient data for forecasting."}
+      </div>
+
       {/* Strategic Focus Domains Banner */}
       <div className="rounded-3xl bg-gradient-to-r from-[#123057] to-[#1e4976] p-6 text-white shadow-sm flex flex-wrap items-center justify-between gap-4 anim-card-enter stagger-1">
         <div>
@@ -70,7 +71,7 @@ export function EmergingSkills({ onNavigate }: EmergingSkillsProps) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {(data?.strategic_focus_domains || ["TECHNOLOGY", "DATA", "DOMAIN", "BEHAVIORAL", "GOVERNANCE"]).map((dom, idx) => (
+          {(data?.strategic_focus_domains || []).map((dom, idx) => (
             <span key={dom} className={`rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold text-teal-300 border border-white/10 anim-card-enter stagger-${Math.min(idx + 1, 6)} tracking-wider`}>
               {dom}
             </span>
@@ -91,7 +92,7 @@ export function EmergingSkills({ onNavigate }: EmergingSkillsProps) {
                   {skill.domain} · <span className="font-mono text-[10px] font-medium">{skill.code}</span>
                 </span>
                 <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 anim-badge-pop">
-                  <Sparkles size={12} /> Urgency: <NumberReveal value={skill.urgency_score} decimals={1} />
+                    <Sparkles size={12} /> {skill.officials_in_deficit} officials affected
                 </span>
               </div>
 
@@ -105,15 +106,15 @@ export function EmergingSkills({ onNavigate }: EmergingSkillsProps) {
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded-lg border border-slate-100 p-2.5">
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Demand Index</span>
-                  <div className="text-sm font-extrabold text-[#123057] mt-0.5">
-                    <NumberReveal value={skill.demand_index} suffix=" pts" />
+                  <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Current Level</span>
+                    <div className="text-sm font-extrabold text-[#123057] mt-0.5">
+                      {skill.average_current_level == null ? "Unavailable" : `${skill.average_current_level} / 5`}
                   </div>
                 </div>
                 <div className="rounded-lg border border-slate-100 p-2.5">
-                  <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Avg Deficit</span>
-                  <div className="text-sm font-extrabold text-rose-600 mt-0.5">
-                    <NumberReveal value={skill.average_gap_size} suffix=" pts" decimals={2} />
+                    <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Observed Gap</span>
+                    <div className="text-sm font-extrabold text-rose-600 mt-0.5">
+                      {skill.average_gap_size == null ? "Unavailable" : <NumberReveal value={skill.average_gap_size} suffix=" pts" decimals={2} />}
                   </div>
                 </div>
               </div>

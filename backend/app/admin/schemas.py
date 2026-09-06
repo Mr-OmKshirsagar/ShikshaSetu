@@ -136,10 +136,10 @@ class EmergingSkillItem(BaseModel):
     code: str
     name: str
     domain: str
-    urgency_score: float
-    demand_index: int
     officials_in_deficit: int
-    average_gap_size: float
+    average_gap_size: Optional[float] = None
+    average_current_level: Optional[float] = None
+    average_required_level: Optional[float] = None
     rationale: str
     recommended_focus: str
 
@@ -147,6 +147,8 @@ class EmergingSkillItem(BaseModel):
 class EmergingSkillsResponse(BaseModel):
     strategic_focus_domains: List[str]
     emerging_capabilities: List[EmergingSkillItem]
+    historical_trend_available: bool
+    data_basis: str
 
 
 # ─── Capacity Planning ───────────────────────────────────────────────────────
@@ -157,18 +159,19 @@ class CapacityInterventionItem(BaseModel):
     domain: str
     priority: str
     target_officials_count: int
-    estimated_training_hours: float
+    estimated_training_hours: Optional[float] = None
     recommended_courses_count: int
     top_resource_title: Optional[str] = None
     top_resource_provider: Optional[str] = None
-    suggested_cohort_size: int
+    suggested_cohort_size: Optional[int] = None
 
 
 class CapacityPlanningResponse(BaseModel):
-    total_training_hours_required: float
+    total_training_hours_required: Optional[float] = None
     total_officials_requiring_intervention: int
     high_priority_initiatives_count: int
     interventions: List[CapacityInterventionItem]
+    data_basis: str
 
 
 # ─── User Directory ──────────────────────────────────────────────────────────
@@ -200,3 +203,9 @@ class AdminReportsResponse(BaseModel):
     skill_gap_summary: Dict[str, Any]
     training_summary: Dict[str, Any]
     compliance_summary: Dict[str, Any]
+
+
+class AdminAssignRoleRequest(BaseModel):
+    role_id: str
+    department: Optional[str] = None
+    designation: Optional[str] = None

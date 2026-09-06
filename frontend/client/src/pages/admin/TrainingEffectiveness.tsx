@@ -133,10 +133,7 @@ export function TrainingEffectiveness({ onNavigate }: TrainingEffectivenessProps
           Training Completion by Department
         </h3>
         <div className="space-y-4">
-          {(data?.completion_by_department || [
-            { department: "Ministry of Statistics & PI", enrolled: 14, completed: 11, rate_pct: 78.6 },
-            { department: "Capacity Building Commission", enrolled: 8, completed: 7, rate_pct: 87.5 },
-          ]).map((dept, idx) => (
+          {(data?.completion_by_department || []).map((dept, idx) => (
             <div key={dept.department} className={`space-y-1.5 anim-card-enter stagger-${Math.min(idx + 1, 6)}`}>
               <div className="flex justify-between text-xs font-bold">
                 <span className="text-[#123057]">{dept.department}</span>

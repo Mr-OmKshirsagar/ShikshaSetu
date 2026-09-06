@@ -101,10 +101,12 @@ class ScoreComponent(BaseModel):
 class RecommendationExplanation(BaseModel):
     """Explanation for why a resource was recommended."""
     summary: str
+    why_recommended: Optional[str] = None
     competency_gap: str
     current_level: Optional[float] = None
     required_level: Optional[float] = None
     gap_size: float
+    priority: Optional[str] = None
     score_breakdown: List[ScoreComponent]
     provider_note: Optional[str] = None
 
@@ -120,6 +122,9 @@ class LearningRecommendation(BaseModel):
     required_level: Optional[float] = None  # Role requirement (0.0 - 5.0)
     gap: float  # required - current
     score: float  # 0.0 - 1.0
+    why_recommended: Optional[str] = None
+    addressed_gaps_count: int = 1
+    addressed_competency_codes: List[str] = Field(default_factory=list)
     explanation: RecommendationExplanation
     source_verification: str  # "VERIFIED", "TENTATIVE"
 
