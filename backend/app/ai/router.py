@@ -132,7 +132,7 @@ async def upload_document(
         # Save to database
         material_id = LearningMaterialRepository.create(database, material)
 
-        # Process document (synchronous despite async signature — single-worker acceptable for hackathon)
+        # Process document (synchronous despite async signature — acceptable for single-worker deployment)
         processing_failed = False
         try:
             await _process_document(database, material_id, file_path, file_ext, settings)
