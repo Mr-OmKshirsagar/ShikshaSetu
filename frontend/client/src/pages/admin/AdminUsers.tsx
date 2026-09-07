@@ -10,12 +10,14 @@ import {
 } from "lucide-react";
 import { api, clearApiCache, AdminUserListResponse, AdminUserItem } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 
 interface AdminUsersProps {
   onNavigate: (page: string) => void;
 }
 
 export function AdminUsers({ onNavigate }: AdminUsersProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<AdminUserListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,7 +30,7 @@ export function AdminUsers({ onNavigate }: AdminUsersProps) {
       const res = await api.admin.users();
       setData(res);
     } catch (err: any) {
-      toast.error(err.message || "Failed to load user directory");
+      toast.error(err.message || t("adminPages.noUsers"));
     } finally {
       setLoading(false);
     }
@@ -54,7 +56,7 @@ export function AdminUsers({ onNavigate }: AdminUsersProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-            User & Access Directory
+            {t("adminPages.usersTitle")}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Active civil servants, curriculum trainers, and system administrators across the portal.
@@ -65,7 +67,7 @@ export function AdminUsers({ onNavigate }: AdminUsersProps) {
           onClick={fetchUsers}
           className="flex items-center gap-1.5 rounded-xl border border-[#e0daef] bg-white px-4 py-2 text-xs font-semibold text-[#4b36a8] shadow-sm hover:bg-purple-50 transition-all btn-interactive"
         >
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh Users
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> {t("adminPages.refresh")}
         </button>
       </div>
 
@@ -75,7 +77,7 @@ export function AdminUsers({ onNavigate }: AdminUsersProps) {
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search users by name, email, employee ID..."
+            placeholder={t("adminPages.searchUsers")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-9 pr-4 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#6d5bc3] focus:bg-white focus:outline-none transition-all"
@@ -89,10 +91,10 @@ export function AdminUsers({ onNavigate }: AdminUsersProps) {
             onChange={(e) => setSelectedRole(e.target.value)}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none transition-all"
           >
-            <option value="ALL">All Access Roles</option>
-            <option value="OFFICIAL">Official / Employee</option>
-            <option value="TRAINER">Trainer</option>
-            <option value="ADMIN">Administrator</option>
+            <option value="ALL">{t("adminPages.allAccessRoles")}</option>
+            <option value="OFFICIAL">{t("adminPages.official")}</option>
+            <option value="TRAINER">{t("adminPages.trainer")}</option>
+            <option value="ADMIN">{t("adminPages.administrator")}</option>
           </select>
         </div>
       </div>
@@ -112,12 +114,12 @@ export function AdminUsers({ onNavigate }: AdminUsersProps) {
           <table className="w-full text-left text-xs">
             <thead className="bg-[#f8f6fd] text-[10px] font-semibold uppercase tracking-wider text-slate-500 border-b border-[#e0daef]">
               <tr>
-                <th className="px-6 py-3.5">User</th>
-                <th className="px-6 py-3.5">Department</th>
+                <th className="px-6 py-3.5">{t("adminPages.user")}</th>
+                <th className="px-6 py-3.5">{t("adminPages.departmentColumn")}</th>
                 <th className="px-6 py-3.5">Professional Role</th>
-                <th className="px-6 py-3.5">Access Role</th>
-                <th className="px-6 py-3.5">Status</th>
-                <th className="px-6 py-3.5">Registered</th>
+                <th className="px-6 py-3.5">{t("adminPages.accessRole")}</th>
+                <th className="px-6 py-3.5">{t("adminPages.status")}</th>
+                <th className="px-6 py-3.5">{t("adminPages.registered")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

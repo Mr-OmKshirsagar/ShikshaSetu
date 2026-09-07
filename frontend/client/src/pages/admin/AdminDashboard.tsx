@@ -18,12 +18,14 @@ import { api, clearApiCache, AdminDashboardResponse } from "@/lib/api";
 import { DEPARTMENT_TAXONOMY } from "@/lib/departments";
 import { toast } from "sonner";
 import { NumberReveal, ProgressBarFill } from "@/components/motion/MotionUtils";
+import { useTranslation } from "@/i18n";
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
 }
 
 export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDepartment, setSelectedDepartment] = useState<string>("ALL");
@@ -52,25 +54,25 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
           <div className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[#4b36a8] anim-badge-pop">
-            <ShieldCheck size={13} /> Civil Services Capability Intelligence Console
+            <ShieldCheck size={13} /> {t("adminDashboard.console")}
           </div>
           <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-            National Workforce Governance
+            {t("adminDashboard.title")}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Real-time organizational competency health, capability gap distribution, and capacity-building metrics.
+            {t("adminDashboard.subtitle")}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-slate-500 whitespace-nowrap">Department:</label>
+            <label className="text-xs font-semibold text-slate-500 whitespace-nowrap">{t("adminDashboard.department")}</label>
             <select
               value={selectedDepartment}
               onChange={(e) => setSelectedDepartment(e.target.value)}
               className="rounded-xl border border-purple-200 bg-white px-3 py-2 text-xs font-semibold text-[#4b36a8] focus:border-[#4b36a8] focus:outline-none shadow-sm"
             >
-              <option value="ALL">All Ministries & Departments</option>
+              <option value="ALL">{t("adminDashboard.allDepartments")}</option>
               {DEPARTMENT_TAXONOMY.map((d) => (
                 <option key={d.department_code} value={d.department_name}>
                   {d.department_name}
@@ -83,7 +85,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             onClick={() => fetchDashboard()}
             className="flex items-center gap-1.5 rounded-xl border border-[#e0daef] bg-white px-4 py-2.5 text-xs font-semibold text-[#4b36a8] shadow-sm hover:bg-purple-50 btn-interactive"
           >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> {t("adminDashboard.refresh")}
           </button>
         </div>
       </div>
@@ -118,7 +120,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-2xl border border-[#e0daef] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-1">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Officials</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">{t("adminDashboard.totalOfficials")}</span>
             <Users size={18} className="text-[#6d5bc3]" />
           </div>
           <div className="mt-3 text-3xl font-extrabold tracking-tight text-[#123057]">
@@ -131,7 +133,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
         <div className="rounded-2xl border border-[#e0daef] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-2">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Avg Proficiency</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">{t("adminDashboard.avgProficiency")}</span>
             <TrendingUp size={18} className="text-[#087f76]" />
           </div>
           <div className="mt-3 text-3xl font-extrabold tracking-tight text-[#087f76]">
@@ -148,7 +150,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
         <div className="rounded-2xl border border-[#e0daef] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-3">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Critical Gaps</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">{t("adminDashboard.criticalGaps")}</span>
             <AlertTriangle size={18} className="text-rose-600" />
           </div>
           <div className="mt-3 text-3xl font-extrabold tracking-tight text-rose-600">
@@ -161,7 +163,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
         <div className="rounded-2xl border border-[#e0daef] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-4">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Training Hours</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">{t("adminDashboard.trainingHours")}</span>
             <Clock size={18} className="text-[#ef7e37]" />
           </div>
           <div className="mt-3 text-3xl font-extrabold tracking-tight text-[#ef7e37]">
@@ -190,7 +192,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               onClick={() => onNavigate("Competency Analytics")}
               className="text-xs font-bold text-[#6d5bc3] hover:underline inline-flex items-center gap-1 btn-interactive"
             >
-              View All <ArrowRight size={12} />
+              {t("adminDashboard.viewAll")} <ArrowRight size={12} />
             </button>
           </div>
 
