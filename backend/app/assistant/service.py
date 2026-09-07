@@ -153,6 +153,7 @@ class AssistantService:
                     top_k_keyword=self.settings.rag_top_k_keyword,
                     top_k_vector=self.settings.rag_top_k_vector,
                     competency_code=request.current_competency_code,
+                    use_glossary=intent_result.use_glossary,
                 )
                 reranked_chunks = mmr_rerank(
                     candidates=raw_candidates,
@@ -210,19 +211,32 @@ class AssistantService:
             provider_name = "capability-fallback"
 
         # ── 8. Groundedness check (RAG / HYBRID paths only) ───────────────────
-        if intent_result.use_rag and reranked_chunks:
-            gnd: GroundednessResult = score_groundedness(
-                answer=answer,
-                retrieved_chunks=reranked_chunks,
-                threshold=self.settings.rag_groundedness_threshold,
-            )
-            logger.debug(
-                "Groundedness: %.3f (%d/%d tokens matched) — grounded=%s",
-                gnd.score, gnd.matched_tokens, gnd.answer_tokens, gnd.is_grounded,
-            )
-            if not gnd.is_grounded:
-                answer = insufficient_evidence_response(message)
-                provider_name = "groundedness-fallback"
+        # FIXED: also handle the case where RAG was attempted but 0 chunks were
+        # retrieved. Previously this was skipped silently and the LLM answered
+        # from parametric knowledge with no grounding signal.
+        if intent_result.use_rag:
+            if reranked_chunks:
+                gnd: GroundednessResult = score_groundedness(
+                    answer=answer,
+                    retrieved_chunks=reranked_chunks,
+                    threshold=self.settings.rag_groundedness_threshold,
+                )
+                logger.debug(
+                    "Groundedness: %.3f (%d/%d tokens matched) — grounded=%s",
+                    gnd.score, gnd.matched_tokens, gnd.answer_tokens, gnd.is_grounded,
+                )
+                if not gnd.is_grounded:
+                    answer = insufficient_evidence_response(message)
+                    provider_name = "groundedness-fallback"
+            else:
+                # RAG was intended but no documents were retrieved — the LLM
+                # answer above was generated from parametric knowledge only.
+                # We permit it but clearly flag zero-grounding in context_summary.
+                # The prompt already asks the LLM to disclaim when uncertain.
+                gnd = None
+                logger.debug(
+                    "RAG intent but 0 chunks retrieved — answer is ungrounded parametric response"
+                )
         else:
             gnd = None
 
@@ -270,6 +284,10 @@ class AssistantService:
         if gnd is not None:
             context_summary["groundedness_score"] = gnd.score
             context_summary["groundedness_passed"] = gnd.is_grounded
+        elif intent_result.use_rag and not reranked_chunks:
+            context_summary["groundedness_score"] = None
+            context_summary["groundedness_passed"] = None
+            context_summary["zero_chunk_rag"] = True
 
         return AssistantChatResponse(
             answer=answer,
