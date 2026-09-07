@@ -420,7 +420,7 @@ async def generate_questions(
             difficulty=request_body.difficulty,
         )
 
-        # Validate questions
+        # Validate questions (structural + basic grounding)
         chunk_repo = DocumentChunkRepository()
         valid_questions, invalid_questions = GroundingValidator.validate_batch(
             questions,
@@ -435,9 +435,33 @@ async def generate_questions(
                 detail=f"Failed to generate valid questions: {len(invalid_questions)} invalid"
             )
 
+        # Duplicate detection — filter out near-duplicates against existing question bank
+        from .validation import filter_duplicate_questions
+        existing_q_docs = list(database.question_bank.find(
+            {"competency_code": request_body.competency_code},
+            {"question": 1, "_id": 0},
+            limit=500,
+        ))
+        unique_questions, dup_questions = filter_duplicate_questions(
+            valid_questions, existing_q_docs, similarity_threshold=0.80
+        )
+        if dup_questions:
+            import logging as _log
+            _log.getLogger(__name__).info(
+                "Filtered %d near-duplicate question(s) from generation batch",
+                len(dup_questions),
+            )
+        if not unique_questions:
+            raise HTTPException(
+                status_code=500,
+                detail="All generated questions were near-duplicates of existing content. Try regenerating.",
+            )
+
+        final_questions = unique_questions
+
         # Get chunks used for source traceability
         retrieved_chunks = set()
-        for q in valid_questions:
+        for q in final_questions:
             retrieved_chunks.update(q.source_chunks)
 
         # Persist questions into Trainer Review Studio
@@ -447,7 +471,7 @@ async def generate_questions(
                 trainer_id=user_id,
                 material_id=material_id,
                 competency_code=request_body.competency_code,
-                questions=[q.dict() if hasattr(q, "dict") else q for q in valid_questions],
+                questions=[q.dict() if hasattr(q, "dict") else q for q in final_questions],
             )
         except Exception:
             pass
@@ -455,7 +479,7 @@ async def generate_questions(
         return GenerationResponse(
             material_id=material_id,
             competency_code=request_body.competency_code,
-            questions=valid_questions,
+            questions=final_questions,
             retrieved_chunk_count=len(retrieved_chunks),
             generation_timestamp=datetime.utcnow().isoformat() + "Z",
         )
