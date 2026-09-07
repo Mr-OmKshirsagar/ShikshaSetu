@@ -22,6 +22,7 @@ import {
   TrainerLearnerAttempt,
 } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal } from "@/components/motion/MotionUtils";
 
 interface TrainerLearnerResultsProps {
@@ -33,6 +34,7 @@ export function TrainerLearnerResults({
   initialQuizId,
   onNavigate,
 }: TrainerLearnerResultsProps) {
+  const { t } = useTranslation();
   const [quizzes, setQuizzes] = useState<TrainerQuiz[]>([]);
   const [attempts, setAttempts] = useState<TrainerLearnerAttempt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +180,7 @@ export function TrainerLearnerResults({
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">Learner Assessment Results</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("learnerResults.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Review civil servant quiz attempts, inspect understanding gaps, and provide qualitative feedback.
           </p>
@@ -202,7 +204,7 @@ export function TrainerLearnerResults({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by learner name, email, or quiz..."
+            placeholder={t("learnerResults.search")}
             className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
           />
           {searchQuery && (
@@ -214,13 +216,13 @@ export function TrainerLearnerResults({
 
         {/* Quiz Filter */}
         <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-slate-500 whitespace-nowrap">Filter Quiz:</label>
+          <label className="text-xs font-semibold text-slate-500 whitespace-nowrap">{t("learnerResults.filterQuiz")}</label>
           <select
             value={selectedQuizId}
             onChange={(e) => setSelectedQuizId(e.target.value)}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-[#ef7e37] focus:outline-none"
           >
-            <option value="ALL">All Quizzes</option>
+            <option value="ALL">{t("learnerResults.allQuizzes")}</option>
             {quizzes.map((q) => (
               <option key={q.id || q.quiz_id || (q as any)._id} value={q.id || q.quiz_id || (q as any)._id}>
                 {q.title}
@@ -242,7 +244,7 @@ export function TrainerLearnerResults({
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-[#ef7e37]">
             <BarChart2 size={24} />
           </div>
-          <h3 className="mt-4 text-base font-bold text-slate-800 tracking-tight">No learner submissions yet</h3>
+          <h3 className="mt-4 text-base font-bold text-slate-800 tracking-tight">{t("learnerResults.empty")}</h3>
           <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
             Once civil servants attempt assigned quizzes, their scores and responses will appear here for evaluation.
           </p>

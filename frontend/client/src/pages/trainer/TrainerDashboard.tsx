@@ -18,12 +18,14 @@ import {
 import { api, TrainerDashboard as TrainerDashboardType } from "@/lib/api";
 import { toast } from "sonner";
 import { NumberReveal, ProgressBarFill } from "@/components/motion/MotionUtils";
+import { useTranslation } from "@/i18n";
 
 interface TrainerDashboardProps {
   onNavigate: (page: string) => void;
 }
 
 export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
+  const { t } = useTranslation();
   const [metrics, setMetrics] = useState<TrainerDashboardType | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,13 +69,13 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur-md anim-badge-pop">
               <Sparkles size={14} className="text-[#ef7e37]" />
-              AI Assessment Studio
+              {t("trainerDashboard.badge")}
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl text-white">
-              Trainer Capability Studio
+              {t("trainerDashboard.title")}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-slate-200 font-normal">
-              Upload public-service curriculum, generate AI-grounded MCQs, audit & approve valid questions, assemble authoritative quizzes, and provide qualitative feedback to civil servants.
+              {t("trainerDashboard.subtitle")}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0 lg:items-end lg:ml-auto">
@@ -82,14 +84,14 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ef7e37] px-6 py-3 text-sm font-semibold text-white shadow-md hover:bg-[#d96a27] btn-interactive w-full sm:w-48"
             >
               <FilePlus size={16} />
-              Upload Material
+              {t("trainerDashboard.upload")}
             </button>
             <button
               onClick={() => onNavigate("AI Question Generator")}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 px-6 py-3 text-sm font-semibold text-white hover:bg-white/20 btn-interactive w-full sm:w-48"
             >
               <FileQuestion size={16} />
-              Generate Questions
+              {t("trainerDashboard.generate")}
             </button>
           </div>
         </div>
@@ -101,7 +103,7 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
         <div className="rounded-2xl border border-[#f0ddd0] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-1">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Learning Materials
+              {t("trainerDashboard.materials")}
             </span>
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
               <BookOpen size={18} />
@@ -111,13 +113,13 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
             <span className="text-3xl font-extrabold tracking-tight text-slate-800">
               {loading ? "..." : <NumberReveal value={totalMaterials} />}
             </span>
-            <span className="text-xs font-medium text-slate-400">curriculum docs</span>
+            <span className="text-xs font-medium text-slate-400">{t("trainerDashboard.curriculumDocs")}</span>
           </div>
           <button
             onClick={() => onNavigate("Learning Materials")}
             className="mt-3 flex items-center gap-1 text-xs font-semibold text-[#ef7e37] hover:underline btn-interactive"
           >
-            View materials <ArrowRight size={12} />
+            {t("trainerDashboard.viewMaterials")} <ArrowRight size={12} />
           </button>
         </div>
 
@@ -125,7 +127,7 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
         <div className="rounded-2xl border border-[#f0ddd0] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Question Pool
+              {t("trainerDashboard.questionPool")}
             </span>
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               <HelpCircle size={18} />
@@ -135,13 +137,13 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
             <span className="text-3xl font-extrabold tracking-tight text-slate-800">
               {loading ? "..." : <NumberReveal value={totalQuestions} />}
             </span>
-            <span className="text-xs font-medium text-slate-400">generated items</span>
+            <span className="text-xs font-medium text-slate-400">{t("trainerDashboard.generatedItems")}</span>
           </div>
           <button
             onClick={() => onNavigate("Question Review")}
             className="mt-3 flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline btn-interactive"
           >
-            Review questions <ArrowRight size={12} />
+            {t("trainerDashboard.reviewQuestions")} <ArrowRight size={12} />
           </button>
         </div>
 
@@ -149,7 +151,7 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
         <div className="rounded-2xl border border-[#f0ddd0] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Published Quizzes
+              {t("trainerDashboard.published")}
             </span>
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
               <Layers size={18} />
@@ -167,7 +169,7 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
             onClick={() => onNavigate("Quiz Studio")}
             className="mt-3 flex items-center gap-1 text-xs font-bold text-purple-600 hover:underline btn-interactive"
           >
-            Open Quiz Studio <ArrowRight size={12} />
+            {t("trainerDashboard.openQuizStudio")} <ArrowRight size={12} />
           </button>
         </div>
 
@@ -175,7 +177,7 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
         <div className="rounded-2xl border border-[#f0ddd0] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Assigned Learners
+              {t("trainerDashboard.learners")}
             </span>
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <Users size={18} />
@@ -185,13 +187,13 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
             <span className="text-3xl font-black text-slate-800">
               {loading ? "..." : <NumberReveal value={totalAssignedLearners} />}
             </span>
-            <span className="text-xs font-semibold text-slate-400">civil servants</span>
+            <span className="text-xs font-semibold text-slate-400">{t("trainerDashboard.civilServants")}</span>
           </div>
           <button
             onClick={() => onNavigate("Learner Results")}
             className="mt-3 flex items-center gap-1 text-xs font-bold text-emerald-600 hover:underline btn-interactive"
           >
-            View submissions <ArrowRight size={12} />
+            {t("trainerDashboard.viewSubmissions")} <ArrowRight size={12} />
           </button>
         </div>
       </div>
@@ -203,7 +205,7 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-lg font-bold text-slate-800">
-                Question Review & Verification Pipeline
+                {t("trainerDashboard.reviewPipeline")}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 AI generates candidate MCQs. Trainer verification ensures grounding & pedagogical quality.
@@ -213,7 +215,7 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
               onClick={() => onNavigate("Question Review")}
               className="rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-bold text-[#c2510e] hover:bg-orange-100 btn-interactive"
             >
-              Open Studio
+              {t("trainerDashboard.openStudio")}
             </button>
           </div>
 
@@ -294,9 +296,9 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
         {/* Right: Quick Action Hub (1 col) */}
         <div className="flex flex-col justify-between rounded-2xl border border-[#f0ddd0] bg-white p-6 shadow-sm anim-card-enter stagger-6">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Workflow Launchpad</h2>
+            <h2 className="text-lg font-bold text-slate-800">{t("trainerDashboard.workflowLaunchpad")}</h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Standard 5-step curriculum evaluation loop
+              {t("trainerDashboard.workflowSubtitle")}
             </p>
 
             <div className="mt-5 space-y-3">

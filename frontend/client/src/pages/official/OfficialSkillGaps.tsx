@@ -14,6 +14,7 @@ import { api, clearApiCache, SkillGapResponse } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal, ProgressBarFill, AnimatedSignalBar, AnimatedSection } from "@/components/motion/MotionUtils";
 
 interface OfficialSkillGapsProps {
@@ -22,6 +23,7 @@ interface OfficialSkillGapsProps {
 
 export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [skillGaps, setSkillGaps] = useState<SkillGapResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
       const res = await api.skillGaps.me();
       setSkillGaps(res);
     } catch (err: any) {
-      const msg = err.message || "Unable to load skill-gap analysis. Please try again.";
+      const msg = err.message || t("skillGaps.unableToLoad");
       setError(msg);
       if (err.status !== 404) {
         toast.error(msg);
@@ -57,7 +59,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
       <div className="space-y-6 animate-fadeIn">
         <div className="rounded-3xl border border-red-200 bg-red-50/50 p-8 text-center">
           <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-red-950">Unable to load skill-gap analysis</h2>
+          <h2 className="text-lg font-bold text-red-950">{t("skillGaps.unableToLoad")}</h2>
           <p className="text-sm text-red-700 mt-1 max-w-md mx-auto">
             {error}
           </p>
@@ -65,7 +67,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
             onClick={fetchSkillGaps}
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-red-700 transition"
           >
-            <RefreshCw className="h-4 w-4" /> Try Again
+            <RefreshCw className="h-4 w-4" /> {t("common.refresh")}
           </button>
         </div>
       </div>
@@ -79,28 +81,28 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
   const isUnassessed = assessedCount === 0;
 
   const overallStatus = isUnassessed
-    ? "Assessment Required"
+    ? t("skillGaps.assessmentRequired")
     : summary?.critical_gaps
     ? "Needs Attention"
     : summary?.high_gaps
-    ? "High Priority"
+    ? t("skillGaps.highPriority")
     : summary?.medium_gaps
     ? "Developing"
-    : "On Track";
+    : t("skillGaps.onTrack");
 
   const displayedRoleName =
     summary?.role_name ||
     skillGaps?.role ||
-    (user?.designation ? `${user.designation} Framework` : "Role Capability Framework");
+    (user?.designation ? `${user.designation} Framework` : t("skillGaps.roleFramework"));
 
   return (
     <div className="space-y-6 anim-page-enter">
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-black text-[#123057]">Skill Gap Intelligence</h1>
+          <h1 className="text-2xl font-black text-[#123057]">{t("skillGaps.intelligenceTitle")}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Automated capability gap calculation comparing current levels against official role requirements.
+            {t("skillGaps.intelligenceSubtitle")}
           </p>
         </div>
 
@@ -110,7 +112,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
             className="flex items-center gap-1.5 rounded-xl border border-[#dfe7f0] bg-white px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 btn-interactive"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            Refresh
+            {t("common.refresh")}
           </button>
           <button
             onClick={() => onNavigate(isUnassessed ? "Assessments" : "Recommendations")}
@@ -118,11 +120,11 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
           >
             {isUnassessed ? (
               <>
-                <ClipboardCheck size={14} /> Start Assessment
+                <ClipboardCheck size={14} /> {t("assessments.launchSampling")}
               </>
             ) : (
               <>
-                <BookOpen size={14} /> View Recommendations
+                <BookOpen size={14} /> {t("recommendations.title")}
               </>
             )}
           </button>
@@ -137,7 +139,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
               <ClipboardCheck size={20} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-amber-900">Capability Assessment Required</h3>
+              <h3 className="text-sm font-bold text-amber-900">{t("skillGaps.assessmentRequired")}</h3>
               <p className="text-xs text-amber-700 mt-0.5">
                 Complete your role capability assessment to establish verified proficiency benchmarks and identify active skill gaps.
               </p>
@@ -147,7 +149,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
             onClick={() => onNavigate("Assessments")}
             className="shrink-0 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-amber-700 btn-interactive"
           >
-            Take Assessment
+            {t("assessments.launchSampling")}
           </button>
         </div>
       )}
@@ -157,7 +159,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
             <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-              Role Requirements Matrix
+              {t("skillGaps.roleRequirements")}
             </div>
             <h2 className="text-xl font-bold text-[#123057] mt-1">
               {displayedRoleName}
@@ -177,11 +179,11 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-xl bg-[#f8fafc] p-4 border border-slate-100 card-interactive">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Skill Gaps
+              {t("skillGaps.title")}
             </div>
             <div className={`mt-2 font-bold tracking-tight ${isUnassessed ? "text-base text-amber-600 font-semibold" : "text-2xl text-[#ef7e37]"}`}>
               {isUnassessed ? (
-                "Assessment Required"
+                t("skillGaps.assessmentRequired")
               ) : (
                 <NumberReveal value={summary?.total_gaps ?? gaps.length} />
               )}
@@ -190,7 +192,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
 
           <div className="rounded-xl bg-[#f8fafc] p-4 border border-slate-100 card-interactive">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Priority Gaps
+              {t("skillGaps.priorityGaps")}
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-rose-600">
               {isUnassessed ? "—" : <NumberReveal value={(summary?.high_gaps || 0) + (summary?.critical_gaps || 0)} />}
@@ -199,7 +201,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
 
           <div className="rounded-xl bg-[#f8fafc] p-4 border border-slate-100 card-interactive">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Assessed Competencies
+              {t("skillGaps.assessedCompetencies")}
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-teal-700">
               <NumberReveal value={assessedCount} /> / {gaps.length}
@@ -208,10 +210,10 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
 
           <div className="rounded-xl bg-[#f8fafc] p-4 border border-slate-100 card-interactive">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Role Baseline
+              {t("skillGaps.roleBaseline")}
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-[#123057]">
-              {gaps.length} Active
+              {gaps.length} {t("skillGaps.active")}
             </div>
           </div>
         </div>
@@ -229,9 +231,9 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 anim-badge-pop">
             <CheckCircle2 size={24} />
           </div>
-          <h3 className="mt-4 text-base font-bold text-[#123057]">No skill gaps detected</h3>
+          <h3 className="mt-4 text-base font-bold text-[#123057]">{t("skillGaps.noGapsDetected")}</h3>
           <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto font-normal">
-            You meet or exceed all capability proficiency levels required for your role.
+            {t("skillGaps.noGapsDetectedSubtitle")}
           </p>
         </div>
       ) : (
@@ -287,7 +289,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
                     onClick={() => onNavigate("Recommendations", { competencyCode: gap.competency_code })}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#ef7e37] px-4 py-2 text-xs font-bold text-white shadow hover:bg-[#d96a27] btn-interactive"
                   >
-                    View Targeted Recommendations <ArrowRight size={13} />
+                    {t("skillGaps.targetedRecommendations")} <ArrowRight size={13} />
                   </button>
                 </div>
               </AnimatedSection>

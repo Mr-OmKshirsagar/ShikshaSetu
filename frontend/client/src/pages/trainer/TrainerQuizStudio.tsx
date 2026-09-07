@@ -28,6 +28,7 @@ import {
   LearningMaterial,
 } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { StatusTransition, AnimatedSection } from "@/components/motion/MotionUtils";
 
 interface TrainerQuizStudioProps {
@@ -35,6 +36,7 @@ interface TrainerQuizStudioProps {
 }
 
 export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
+  const { t } = useTranslation();
   const [quizzes, setQuizzes] = useState<TrainerQuiz[]>([]);
   const [approvedQuestions, setApprovedQuestions] = useState<TrainerQuestion[]>([]);
   const [materials, setMaterials] = useState<LearningMaterial[]>([]);
@@ -254,7 +256,7 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">Quiz & Assessment Studio</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("trainerQuiz.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Build formal competency quizzes exclusively from approved questions, publish, and assign to learner cohorts.
           </p>
@@ -299,7 +301,7 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-[#ef7e37]">
                 <PenTool size={24} />
               </div>
-              <h3 className="mt-4 text-base font-bold text-slate-800 tracking-tight">No assessments created yet</h3>
+              <h3 className="mt-4 text-base font-bold text-slate-800 tracking-tight">{t("trainerQuiz.noAssessments")}</h3>
               <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
                 Assemble approved questions into standardized capability assessment quizzes for your department.
               </p>
@@ -415,7 +417,7 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
       {activeTab === "CREATE" && (
         <div className="rounded-3xl border border-[#f0ddd0] bg-white p-6 sm:p-8 shadow-sm space-y-6">
           <div className="border-b border-slate-100 pb-4">
-            <h2 className="text-xl font-black text-slate-800">Create New Capability Assessment</h2>
+            <h2 className="text-xl font-black text-slate-800">{t("trainerQuiz.create")}</h2>
             <p className="text-xs text-slate-400 mt-0.5">
               Compose a verified quiz draft exclusively from questions with status APPROVED.
             </p>

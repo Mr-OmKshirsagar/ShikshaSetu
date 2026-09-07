@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { api, clearApiCache, RecommendationResponse, Recommendation } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal, AnimatedSection } from "@/components/motion/MotionUtils";
 
 interface OfficialRecommendationsProps {
@@ -25,6 +26,7 @@ export function OfficialRecommendations({
   initialCompetencyCode,
   onNavigate,
 }: OfficialRecommendationsProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<RecommendationResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -105,7 +107,7 @@ export function OfficialRecommendations({
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-black text-[#123057]">Personalized Recommendations</h1>
+          <h1 className="text-2xl font-black text-[#123057]">{t("recommendations.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
             iGOT Karmayogi & NSSTA learning resources ranked by multi-factor capability gap algorithm.
           </p>

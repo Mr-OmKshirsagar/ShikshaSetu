@@ -19,6 +19,7 @@ import { LearningActivity } from "@/lib/api";
 import { CourseViewerModal } from "@/components/CourseViewerModal";
 import { getCourseCurriculum } from "@/lib/courseContent";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal, ProgressBarFill, AnimatedSection } from "@/components/motion/MotionUtils";
 
 interface OfficialLearningProps {
@@ -30,6 +31,7 @@ export function OfficialLearning({
   initialActivityId,
   onNavigate,
 }: OfficialLearningProps) {
+  const { t } = useTranslation();
   const { activities, currentActivity, loading, updateProgress, completeActivity } =
     useLearningActivities(true);
 
@@ -116,7 +118,7 @@ export function OfficialLearning({
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#123057]">My Learning Workspace</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#123057]">{t("learning.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Track module completions, record supporting evidence, and prepare for capability validation.
           </p>

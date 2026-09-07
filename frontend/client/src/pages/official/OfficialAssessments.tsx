@@ -48,6 +48,8 @@ import {
   type UserApplicableCompetency,
 } from "@/lib/api";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "@/i18n";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -75,9 +77,9 @@ type AssessmentPhase =
 
 const SESSION_STORAGE_KEY = "shikshasetu_adaptive_session";
 
-function saveSessionToStorage(sessionId: string, code: string) {
+function saveSessionToStorage(sessionId: string, code: string, userId: string) {
   try {
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ sessionId, code, ts: Date.now() }));
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ sessionId, code, userId, ts: Date.now() }));
   } catch {/* ignore */}
 }
 
@@ -85,11 +87,15 @@ function clearSessionFromStorage() {
   try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch {/* ignore */}
 }
 
-function getStoredSession(): { sessionId: string; code: string } | null {
+function getStoredSession(userId: string): { sessionId: string; code: string } | null {
   try {
     const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
+    if (parsed.userId !== userId) {
+      clearSessionFromStorage();
+      return null;
+    }
     // Expire stored sessions after 2 hours
     if (Date.now() - parsed.ts > 2 * 60 * 60 * 1000) {
       clearSessionFromStorage();
@@ -193,6 +199,8 @@ function AssessmentHistoryPanel({ onStart }: { onStart: (code: string) => void }
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function OfficialAssessments({ initialCompetencyCode, onNavigate }: OfficialAssessmentsProps) {
+  const { user } = useAuth();
+  const { t } = useTranslation();
   // ── Phase ────────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<AssessmentPhase>("LOADING_COMPETENCIES");
 
@@ -238,7 +246,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
         if (cancelled) return;
         setCompetencies(comps || []);
         // Check for stored in-progress session
-        const stored = getStoredSession();
+        const stored = user?.id ? getStoredSession(user.id) : null;
         if (stored) setResumeSession(stored);
         setPhase("IDLE");
       })
@@ -246,7 +254,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
         if (!cancelled) setPhase("IDLE");
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [user?.id]);
 
   // ── Auto-start from navigation context ───────────────────────────────────
 
@@ -290,7 +298,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
       setTotalQPlanned(res.total_questions_planned);
       setTheta(res.estimated_level);
       setDifficulty(res.difficulty);
-      saveSessionToStorage(res.session_id, code);
+      if (user?.id) saveSessionToStorage(res.session_id, code, user.id);
       setPhase("IN_PROGRESS");
     } catch (err: any) {
       const msg: string = err?.message || "Failed to start assessment.";
@@ -477,7 +485,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
           <div className="flex items-start gap-3">
             <AlertCircle size={20} className="text-red-600 shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-sm font-bold text-red-800">Assessment Error</h3>
+              <h3 className="text-sm font-bold text-red-800">{t("assessments.assessmentError")}</h3>
               <p className="text-xs text-red-700 mt-1 leading-relaxed">{errorMsg}</p>
             </div>
           </div>
@@ -486,13 +494,13 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
               onClick={() => selectedCode ? startAssessment(selectedCode) : resetToIdle()}
               className="inline-flex items-center gap-1.5 rounded-xl bg-red-700 px-4 py-2 text-xs font-bold text-white hover:bg-red-800 transition-all"
             >
-              <RefreshCw size={13} /> Retry
+              <RefreshCw size={13} /> {t("common.refresh")}
             </button>
             <button
               onClick={resetToIdle}
               className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all"
             >
-              Back to Assessments
+              {t("assessments.backToAssessments")}
             </button>
           </div>
         </div>
@@ -511,7 +519,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
           <div className="flex items-start gap-3">
             <Info size={20} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-sm font-bold text-amber-800">Assessment Not Yet Available</h3>
+              <h3 className="text-sm font-bold text-amber-800">{t("assessments.notAvailable")}</h3>
               <p className="text-xs text-amber-700 mt-1 leading-relaxed">{errorMsg}</p>
             </div>
           </div>
@@ -519,7 +527,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
             onClick={resetToIdle}
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all"
           >
-            ← Back to Assessments
+            ← {t("assessments.backToAssessments")}
           </button>
         </div>
       </div>
@@ -544,7 +552,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-5 border-b border-slate-100">
             <div>
               <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-900">
-                <CheckCircle2 size={13} /> Adaptive Assessment Complete
+                <CheckCircle2 size={13} /> {t("assessments.assessmentComplete")}
               </div>
               <h2 className="text-2xl font-black text-[#123057] mt-2 tracking-tight">
                 {finalResult.competency_name}
@@ -556,7 +564,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
             </div>
             {/* Validated level */}
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 px-6 py-4 text-center shrink-0">
-              <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Final Level</div>
+              <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">{t("assessments.finalLevel")}</div>
               <div className="text-4xl font-black text-[#123057] mt-1 tracking-tight">
                 {finalResult.final_demonstrated_level.toFixed(1)}
               </div>
@@ -567,26 +575,26 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
           {/* KPI grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
             <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 text-center">
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Questions</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">{t("assessments.questions")}</div>
               <div className="text-xl font-black text-[#123057] mt-0.5">
                 {finalResult.total_questions}
               </div>
             </div>
             <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 text-center">
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Accuracy</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">{t("assessments.accuracy")}</div>
               <div className="text-xl font-black text-[#123057] mt-0.5">
                 {finalResult.accuracy_pct.toFixed(0)}%
               </div>
             </div>
             <div className={`rounded-xl border p-3 text-center ${improvement >= 0 ? "bg-emerald-50 border-emerald-100" : "bg-red-50 border-red-100"}`}>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Change</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">{t("assessments.change")}</div>
               <div className={`text-xl font-black mt-0.5 flex items-center justify-center gap-1 ${improvement >= 0 ? "text-emerald-700" : "text-red-600"}`}>
                 {ImpIcon && <ImpIcon size={16} />}
                 {improvement >= 0 ? "+" : ""}{improvement.toFixed(2)}
               </div>
             </div>
             <div className={`rounded-xl border p-3 text-center ${gap <= 0 ? "bg-emerald-50 border-emerald-100" : "bg-amber-50 border-amber-100"}`}>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Skill Gap</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">{t("skillGaps.title")}</div>
               <div className={`text-xl font-black mt-0.5 ${gapInfo.color}`}>
                 {gap <= 0 ? "✓ Met" : gap.toFixed(2)}
               </div>
@@ -596,15 +604,15 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
 
         {/* Competency timeline */}
         <div className="rounded-2xl border border-[#dfe7f0] bg-white p-6 shadow-sm space-y-4">
-          <h3 className="text-sm font-bold text-[#123057]">Competency Rating Update</h3>
+          <h3 className="text-sm font-bold text-[#123057]">{t("assessments.competencyImpact")}</h3>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Previous</span>
+              <span>{t("assessments.previous")}</span>
               <span className="font-bold">{finalResult.previous_competency_level.toFixed(1)}</span>
             </div>
             <ThetaBar theta={finalResult.previous_competency_level} />
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>Validated</span>
+              <span>{t("assessments.officialValidated")}</span>
               <span className="font-bold text-[#123057]">{finalResult.updated_competency_level.toFixed(1)}</span>
             </div>
             <ThetaBar theta={finalResult.updated_competency_level} />
@@ -630,19 +638,19 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
             onClick={() => onNavigate("Skill Gaps")}
             className="inline-flex items-center gap-2 rounded-xl bg-[#ef7e37] px-5 py-2.5 text-xs font-bold text-white shadow hover:bg-[#d96a27] transition-all"
           >
-            <Target size={13} /> View Updated Skill Gaps
+            <Target size={13} /> {t("assessments.viewUpdatedGaps")}
           </button>
           <button
             onClick={() => onNavigate("Recommendations")}
             className="inline-flex items-center gap-2 rounded-xl border border-[#dfe7f0] bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all"
           >
-            <BookOpen size={13} /> Learning Recommendations
+            <BookOpen size={13} /> {t("recommendations.title")}
           </button>
           <button
             onClick={resetToIdle}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-600 ml-auto transition-all"
           >
-            <RotateCcw size={13} /> Assess Another Competency
+            <RotateCcw size={13} /> {t("assessments.assessAnother")}
           </button>
         </div>
       </div>
@@ -659,8 +667,8 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#123057] to-[#087f76] shadow-md">
           <Loader2 size={28} className="text-white animate-spin" />
         </div>
-        <p className="text-base font-bold text-[#123057]">Finalising assessment…</p>
-        <p className="text-xs text-slate-400">Recording authoritative evidence (0.85 confidence)</p>
+        <p className="text-base font-bold text-[#123057]">{t("assessments.finalising")}</p>
+        <p className="text-xs text-slate-400">{t("assessments.recordingEvidence")}</p>
       </div>
     );
   }
@@ -694,7 +702,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
               </h2>
             </div>
             <div className="text-right shrink-0">
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Estimated Level</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">{t("assessments.demonstratedLevel")}</div>
               <div className="text-2xl font-black text-[#123057]">{theta.toFixed(1)}</div>
             </div>
           </div>
@@ -702,7 +710,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
           {/* Progress */}
           <div className="mt-4 space-y-1.5">
             <div className="flex justify-between text-[10px] font-bold text-slate-400">
-              <span>Question {currentQNumber} of {totalQPlanned}</span>
+              <span>{t("assessments.questionOf", { current: currentQNumber, total: totalQPlanned })}</span>
               <span>{progressPct}% complete</span>
             </div>
             <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">

@@ -16,8 +16,9 @@ import {
   Check,
   AlertTriangle,
 } from "lucide-react";
-import { api, clearApiCache, TrainerQuestion, QuestionReviewStatus, LearningMaterial } from "@/lib/api";
+import { api, clearApiCache, TrainerQuestion, LearningMaterial } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 
 interface TrainerQuestionReviewProps {
   initialMaterialId?: string;
@@ -53,11 +54,14 @@ export function TrainerQuestionReview({
   const [rejectingQuestion, setRejectingQuestion] = useState<TrainerQuestion | null>(null);
   const [rejectNotes, setRejectNotes] = useState("");
   const [submittingReject, setSubmittingReject] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const { t } = useTranslation();
 
   const fetchQuestionsAndMaterials = async () => {
     clearApiCache();
     try {
       setLoading(true);
+      setLoadError(false);
       const mats = await api.trainer.materials.list();
       setMaterials(mats);
 
@@ -94,7 +98,8 @@ export function TrainerQuestionReview({
         }
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to load questions");
+      setLoadError(true);
+      toast.error(err.message || t("questionReview.loadError"));
     } finally {
       setLoading(false);
     }
@@ -109,17 +114,17 @@ export function TrainerQuestionReview({
   const handleApprove = async (q: TrainerQuestion) => {
     const qid = q.id || q.question_id || (q as any)._id;
     try {
-      await api.trainer.questions.approve(qid);
-      toast.success("Question approved! It can now be used in published quizzes.");
+      const approved = await api.trainer.questions.approve(qid);
+      toast.success(t("questionReview.approvedToast"));
       setQuestions((prev) =>
         prev.map((item) =>
           (item.id || item.question_id || (item as any)._id) === qid
-            ? { ...item, status: "APPROVED" as QuestionReviewStatus }
+            ? { ...item, ...approved, status: approved.status || "APPROVED" }
             : item
         )
       );
     } catch (err: any) {
-      toast.error(err.message || "Failed to approve question");
+      toast.error(err.message || t("questionReview.approveError"));
     }
   };
 
@@ -140,11 +145,11 @@ export function TrainerQuestionReview({
     const qid = editingQuestion.id || editingQuestion.question_id || (editingQuestion as any)._id;
 
     if (!editForm.question.trim()) {
-      toast.error("Question text cannot be empty.");
+      toast.error(t("questionReview.emptyQuestion"));
       return;
     }
     if (editForm.options.some((opt) => !opt.trim())) {
-      toast.error("All 4 options must be provided.");
+      toast.error(t("questionReview.missingOptions"));
       return;
     }
 
@@ -157,7 +162,7 @@ export function TrainerQuestionReview({
         explanation: editForm.explanation,
       });
 
-      toast.success("Question edited successfully! Status set to EDITED.");
+      toast.success(t("questionReview.editedToast"));
       setQuestions((prev) =>
         prev.map((item) =>
           (item.id || item.question_id || (item as any)._id) === qid
@@ -168,7 +173,7 @@ export function TrainerQuestionReview({
                 options: editForm.options,
                 correct_answer: editForm.correct_answer,
                 explanation: editForm.explanation,
-                status: "EDITED" as QuestionReviewStatus,
+                status: updated.status || "EDITED",
               }
             : item
         )
@@ -176,7 +181,7 @@ export function TrainerQuestionReview({
       setEditModalOpen(false);
       setEditingQuestion(null);
     } catch (err: any) {
-      toast.error(err.message || "Failed to edit question");
+      toast.error(err.message || t("questionReview.editError"));
     } finally {
       setSavingEdit(false);
     }
@@ -194,24 +199,25 @@ export function TrainerQuestionReview({
     const qid = rejectingQuestion.id || rejectingQuestion.question_id || (rejectingQuestion as any)._id;
 
     if (!rejectNotes.trim()) {
-      toast.error("Please provide a reason for rejecting this question.");
+      toast.error(t("questionReview.missingReason"));
       return;
     }
 
     try {
       setSubmittingReject(true);
-      await api.trainer.questions.reject(qid, {
+      const rejected = await api.trainer.questions.reject(qid, {
         action: "REJECT",
         review_notes: rejectNotes.trim(),
       });
 
-      toast.success("Question rejected.");
+      toast.success(t("questionReview.rejectedToast"));
       setQuestions((prev) =>
         prev.map((item) =>
           (item.id || item.question_id || (item as any)._id) === qid
             ? {
                 ...item,
-                status: "REJECTED" as QuestionReviewStatus,
+                ...rejected,
+                status: rejected.status || "REJECTED",
                 review_notes: rejectNotes.trim(),
               }
             : item
@@ -220,7 +226,7 @@ export function TrainerQuestionReview({
       setRejectModalOpen(false);
       setRejectingQuestion(null);
     } catch (err: any) {
-      toast.error(err.message || "Failed to reject question");
+      toast.error(err.message || t("questionReview.rejectError"));
     } finally {
       setSubmittingReject(false);
     }
@@ -229,9 +235,9 @@ export function TrainerQuestionReview({
   const filteredQuestions = questions.filter((q) => {
     const term = searchQuery.toLowerCase();
     const matchesSearch =
-      q.question.toLowerCase().includes(term) ||
-      (q.explanation && q.explanation.toLowerCase().includes(term)) ||
-      q.competency_code.toLowerCase().includes(term);
+      (q.question || "").toLowerCase().includes(term) ||
+      (q.explanation || "").toLowerCase().includes(term) ||
+      (q.competency_code || "").toLowerCase().includes(term);
 
     const matchesStatus = statusFilter === "ALL" || q.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -242,9 +248,9 @@ export function TrainerQuestionReview({
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">Question Review Studio</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("questionReview.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Audit AI-generated MCQs, edit inaccuracies, and approve questions for authorized assessments.
+            {t("questionReview.subtitle")}
           </p>
         </div>
 
@@ -254,14 +260,14 @@ export function TrainerQuestionReview({
             className="flex items-center gap-1.5 rounded-xl border border-[#f0ddd0] bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-orange-50 btn-interactive"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            Refresh Pool
+            {t("questionReview.refreshPool")}
           </button>
 
           <button
             onClick={() => onNavigate("Quiz Studio")}
             className="flex items-center gap-2 rounded-xl bg-[#ef7e37] px-4 py-2.5 text-xs font-semibold text-white shadow hover:bg-[#d96a27] btn-interactive"
           >
-            Open Quiz Studio <ArrowRight size={14} />
+            {t("questionReview.openQuizStudio")} <ArrowRight size={14} />
           </button>
         </div>
       </div>
@@ -275,7 +281,7 @@ export function TrainerQuestionReview({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search questions by keyword or competency..."
+            placeholder={t("questionReview.searchPlaceholder")}
             className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
           />
           {searchQuery && (
@@ -287,13 +293,13 @@ export function TrainerQuestionReview({
 
         {/* Material Filter */}
         <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-slate-500 whitespace-nowrap">Material:</label>
+          <label className="text-xs font-bold text-slate-500 whitespace-nowrap">{t("questionReview.material")}</label>
           <select
             value={selectedMaterialId}
             onChange={(e) => setSelectedMaterialId(e.target.value)}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-[#ef7e37] focus:outline-none"
           >
-            <option value="ALL">All Materials</option>
+            <option value="ALL">{t("questionReview.allMaterials")}</option>
             {materials.map((m) => (
               <option key={m.id || (m as any)._id} value={m.id || (m as any)._id}>
                 {m.original_filename || m.filename}
@@ -327,22 +333,33 @@ export function TrainerQuestionReview({
             <div key={n} className="h-48 rounded-2xl border border-slate-200 bg-white p-6 animate-pulse" />
           ))}
         </div>
+      ) : loadError ? (
+        <div className="rounded-2xl border border-dashed border-rose-200 bg-white p-12 text-center anim-fade-up">
+          <AlertTriangle className="mx-auto text-rose-600" size={28} />
+          <h3 className="mt-4 text-base font-bold text-slate-800">{t("questionReview.loadError")}</h3>
+          <button
+            onClick={fetchQuestionsAndMaterials}
+            className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#ef7e37] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#d96a27] btn-interactive"
+          >
+            <RefreshCw size={14} /> {t("common.refresh")}
+          </button>
+        </div>
       ) : filteredQuestions.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#f0ddd0] bg-white p-12 text-center anim-fade-up">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-[#ef7e37]">
             <HelpCircle size={24} />
           </div>
-          <h3 className="mt-4 text-base font-bold text-slate-800">No questions found</h3>
+          <h3 className="mt-4 text-base font-bold text-slate-800">{t("questionReview.noQuestions")}</h3>
           <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
             {searchQuery || statusFilter !== "ALL"
-              ? "Try adjusting your filters or search terms."
-              : "Generate questions from your uploaded materials to start reviewing."}
+              ? t("questionReview.adjustFilters")
+              : t("questionReview.generatePrompt")}
           </p>
           <button
             onClick={() => onNavigate("AI Question Generator")}
             className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#ef7e37] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#d96a27] btn-interactive"
           >
-            <Sparkles size={14} /> Generate Questions
+            <Sparkles size={14} /> {t("questionReview.generateQuestions")}
           </button>
         </div>
       ) : (
@@ -439,7 +456,7 @@ export function TrainerQuestionReview({
                           <span className="flex-1">{opt}</span>
                           {isCorrect && (
                             <span className="text-[10px] font-extrabold uppercase text-emerald-700 anim-badge-pop">
-                              Correct Key
+                              {t("questionReview.correctKey")}
                             </span>
                           )}
                         </div>
@@ -450,7 +467,7 @@ export function TrainerQuestionReview({
                 {/* Explanation / Grounding */}
                 {q.explanation && (
                   <div className="mt-4 rounded-xl border border-slate-200/60 bg-slate-50 p-3.5 text-xs text-slate-600 leading-relaxed">
-                    <strong className="text-slate-800 font-semibold">Grounded Explanation:</strong>{" "}
+                    <strong className="text-slate-800 font-semibold">{t("questionReview.groundedExplanation")}</strong>{" "}
                     {q.explanation}
                   </div>
                 )}
@@ -460,7 +477,7 @@ export function TrainerQuestionReview({
                   <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2 anim-fade-up">
                     <AlertTriangle size={15} className="text-rose-600 mt-0.5 shrink-0" />
                     <div>
-                      <strong>Reviewer Rejection Reason:</strong> {q.review_notes}
+                      <strong>{t("questionReview.rejectionReason")}</strong> {q.review_notes}
                     </div>
                   </div>
                 )}
@@ -468,7 +485,7 @@ export function TrainerQuestionReview({
                 {/* Action Bar */}
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
                   <div className="text-[11px] font-semibold text-slate-400">
-                    ID: {qid}
+                    {t("questionReview.id")} {qid}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -476,7 +493,7 @@ export function TrainerQuestionReview({
                       onClick={() => openEditModal(q)}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 btn-interactive"
                     >
-                      <Edit3 size={13} /> Edit Question
+                      <Edit3 size={13} /> {t("questionReview.edit")}
                     </button>
 
                     {!isRejected && (
@@ -484,7 +501,7 @@ export function TrainerQuestionReview({
                         onClick={() => openRejectModal(q)}
                         className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 btn-interactive"
                       >
-                        <XCircle size={13} /> Reject
+                        <XCircle size={13} /> {t("questionReview.reject")}
                       </button>
                     )}
 
@@ -493,7 +510,7 @@ export function TrainerQuestionReview({
                         onClick={() => handleApprove(q)}
                         className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-700 btn-interactive"
                       >
-                        <CheckCircle2 size={13} /> Approve Question
+                        <CheckCircle2 size={13} /> {t("questionReview.approve")}
                       </button>
                     )}
                   </div>
@@ -511,10 +528,10 @@ export function TrainerQuestionReview({
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg font-extrabold text-slate-800">
-                  Edit Assessment Question
+                  {t("questionReview.editTitle")}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Refine question phrasing, options, or explanation
+                  {t("questionReview.editSubtitle")}
                 </p>
               </div>
               <button
@@ -529,7 +546,7 @@ export function TrainerQuestionReview({
               {/* Question Text */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Question Stem
+                  {t("questionReview.questionStem")}
                 </label>
                 <textarea
                   value={editForm.question}
@@ -543,7 +560,7 @@ export function TrainerQuestionReview({
               {/* Options */}
               <div className="space-y-3">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Multiple Choice Options
+                  {t("questionReview.options")}
                 </label>
                 {editForm.options.map((opt, optIdx) => {
                   const letter = String.fromCharCode(65 + optIdx);
@@ -561,7 +578,7 @@ export function TrainerQuestionReview({
                           setEditForm({ ...editForm, options: newOpts });
                         }}
                         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:border-[#ef7e37] focus:outline-none"
-                        placeholder={`Option ${letter}`}
+                        placeholder={t("questionReview.option", { letter })}
                         required
                       />
                     </div>
@@ -572,7 +589,7 @@ export function TrainerQuestionReview({
               {/* Correct Answer Selector */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Correct Answer Key
+                  {t("questionReview.correctAnswer")}
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {["A", "B", "C", "D"].map((letter) => (
@@ -586,7 +603,7 @@ export function TrainerQuestionReview({
                           : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                       }`}
                     >
-                      Option {letter}
+                      {t("questionReview.option", { letter })}
                     </button>
                   ))}
                 </div>
@@ -595,14 +612,14 @@ export function TrainerQuestionReview({
               {/* Explanation */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Explanation & Grounding Context
+                  {t("questionReview.explanation")}
                 </label>
                 <textarea
                   value={editForm.explanation}
                   onChange={(e) => setEditForm({ ...editForm, explanation: e.target.value })}
                   rows={3}
                   className="w-full rounded-xl border border-slate-200 p-3 text-xs text-slate-800 focus:border-[#ef7e37] focus:outline-none shadow-sm"
-                  placeholder="Provide educational justification..."
+                  placeholder={t("questionReview.explanationPlaceholder")}
                   required
                 />
               </div>
@@ -614,14 +631,14 @@ export function TrainerQuestionReview({
                   onClick={() => setEditModalOpen(false)}
                   className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={savingEdit}
                   className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {savingEdit ? "Saving..." : "Save Modifications"}
+                  {savingEdit ? t("questionReview.saving") : t("questionReview.saveChanges")}
                 </button>
               </div>
             </form>
@@ -635,7 +652,7 @@ export function TrainerQuestionReview({
           <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-rose-200 anim-scale-in">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-rose-800 flex items-center gap-2">
-                <XCircle size={18} /> Reject Question
+                <XCircle size={18} /> {t("questionReview.rejectTitle")}
               </h3>
               <button
                 onClick={() => setRejectModalOpen(false)}
@@ -647,19 +664,19 @@ export function TrainerQuestionReview({
 
             <form onSubmit={handleConfirmReject} className="mt-4 space-y-4">
               <p className="text-xs text-slate-600 leading-relaxed">
-                Provide feedback or reason why this question is being rejected (e.g. hallucinated content, ambiguous options, or lack of grounding).
+                {t("questionReview.rejectPrompt")}
               </p>
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700">
-                  Rejection Reason / Notes:
+                  {t("questionReview.rejectionNotes")}
                 </label>
                 <textarea
                   value={rejectNotes}
                   onChange={(e) => setRejectNotes(e.target.value)}
                   rows={3}
                   className="w-full rounded-xl border border-rose-200 p-3 text-xs text-slate-800 focus:border-rose-500 focus:outline-none"
-                  placeholder="e.g., Option B is ambiguous, and source text does not support this definition..."
+                  placeholder={t("questionReview.rejectionPlaceholder")}
                   required
                 />
               </div>
@@ -670,14 +687,14 @@ export function TrainerQuestionReview({
                   onClick={() => setRejectModalOpen(false)}
                   className="rounded-xl border border-slate-200 px-3.5 py-1.5 text-xs font-bold text-slate-600 btn-interactive"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={submittingReject}
                   className="rounded-xl bg-rose-600 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-rose-700 disabled:opacity-50 btn-interactive"
                 >
-                  {submittingReject ? "Rejecting..." : "Confirm Rejection"}
+                  {submittingReject ? t("questionReview.rejecting") : t("questionReview.confirmRejection")}
                 </button>
               </div>
             </form>
