@@ -7,7 +7,6 @@ import {
   CalendarRange,
   FileBarChart,
   LayoutDashboard,
-  LogOut,
   Menu,
   TrendingUp,
   Users,
@@ -31,20 +30,20 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children, activePage, onNavigate }: AdminLayoutProps) {
   const { user, logout } = useAuth();
-  const { t, isHindi } = useTranslation();
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
-    { id: "Dashboard", label: isHindi ? "डैशबोर्ड" : "Dashboard", icon: LayoutDashboard },
-    { id: "Workforce Overview", label: isHindi ? "कार्यबल अवलोकन" : "Workforce Overview", icon: Building2 },
-    { id: "Competency Analytics", label: isHindi ? "क्षमता विश्लेषण" : "Competency Analytics", icon: BarChart2 },
-    { id: "Skill Gap Analytics", label: isHindi ? "कौशल अंतराल विश्लेषण" : "Skill Gap Analytics", icon: Brain },
-    { id: "Training Effectiveness", label: isHindi ? "प्रशिक्षण प्रभावशीलता" : "Training Effectiveness", icon: TrendingUp },
-    { id: "Emerging Skills", label: isHindi ? "उभरते कौशल" : "Emerging Skills", icon: Zap },
-    { id: "Capacity Planning", label: isHindi ? "क्षमता योजना" : "Capacity Planning", icon: CalendarRange },
-    { id: "Users", label: isHindi ? "उपयोगकर्ता पंजी" : "Users", icon: Users },
-    { id: "Reports", label: isHindi ? "प्रशासकीय रिपोर्ट" : "Reports", icon: FileBarChart },
-    { id: "Profile", label: isHindi ? "प्रोफ़ाइल" : "Profile", icon: UserRound },
+    { id: "Dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { id: "Workforce Overview", label: t("nav.workforce"), icon: Building2 },
+    { id: "Competency Analytics", label: t("nav.adminCompetencies"), icon: BarChart2 },
+    { id: "Skill Gap Analytics", label: t("nav.adminSkillGaps"), icon: Brain },
+    { id: "Training Effectiveness", label: t("nav.trainingEffectiveness"), icon: TrendingUp },
+    { id: "Emerging Skills", label: t("nav.emergingSkills"), icon: Zap },
+    { id: "Capacity Planning", label: t("nav.capacityPlanning"), icon: CalendarRange },
+    { id: "Users", label: t("nav.users"), icon: Users },
+    { id: "Reports", label: t("nav.reports"), icon: FileBarChart },
+    { id: "Profile", label: t("nav.profile"), icon: UserRound },
   ];
 
   const handleNav = (page: string) => {
@@ -68,14 +67,14 @@ export function AdminLayout({ children, activePage, onNavigate }: AdminLayoutPro
           <div>
             <div className="text-base font-bold text-[#4b36a8] tracking-tight">ShikshaSetu</div>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Intelligence Console
+              {t("shell.adminRole")}
             </div>
           </div>
         </div>
 
         {/* Section label */}
         <div className="px-7 mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Admin workspace
+          {t("shell.adminWorkspace")}
         </div>
 
         {/* Nav items */}
@@ -105,15 +104,8 @@ export function AdminLayout({ children, activePage, onNavigate }: AdminLayoutPro
             {user?.full_name ?? "—"}
           </div>
           <div className="text-[11px] font-normal text-slate-400 truncate mb-3">
-            {user?.designation ?? user?.department ?? (isHindi ? "प्रशासक" : "Administrator")}
+            {user?.designation ?? user?.department ?? t("shell.adminRole")}
           </div>
-          <button
-            onClick={logout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-purple-50 transition-colors btn-interactive"
-          >
-            <LogOut size={15} />
-            {t("common.logout")}
-          </button>
         </div>
       </aside>
 
@@ -129,7 +121,7 @@ export function AdminLayout({ children, activePage, onNavigate }: AdminLayoutPro
       <button
         className="fixed left-4 top-4 z-50 rounded-lg bg-white p-2 shadow border border-[#e0daef] lg:hidden btn-interactive"
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-label="Toggle sidebar"
+        aria-label={sidebarOpen ? t("common.closeSidebar") : t("common.openSidebar")}
       >
         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
@@ -139,7 +131,7 @@ export function AdminLayout({ children, activePage, onNavigate }: AdminLayoutPro
         <header className="flex h-[68px] items-center justify-between border-b border-[#e0daef] bg-white px-6 lg:px-9">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
-              {isHindi ? "प्रशासक कार्यक्षेत्र" : "Admin workspace"}
+              {t("shell.adminWorkspace")}
             </div>
             <h1 className="text-lg font-bold text-[#4b36a8]">
               {navItems.find((n) => n.id === activePage)?.label || activePage}

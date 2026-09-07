@@ -7,7 +7,6 @@ import {
   FilePlus,
   Layers,
   LayoutDashboard,
-  LogOut,
   Menu,
   PenTool,
   Users,
@@ -30,19 +29,19 @@ interface TrainerLayoutProps {
 
 export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayoutProps) {
   const { user, logout } = useAuth();
-  const { t, isHindi } = useTranslation();
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
-    { id: "Dashboard", label: isHindi ? "डैशबोर्ड" : "Dashboard", icon: LayoutDashboard },
-    { id: "Learning Materials", label: isHindi ? "प्रशिक्षण सामग्री" : "Learning Materials", icon: BookOpen },
-    { id: "Upload Material", label: isHindi ? "सामग्री अपलोड" : "Upload Material", icon: FilePlus },
-    { id: "AI Question Generator", label: isHindi ? "एआई प्रश्न निर्माता" : "AI Question Generator", icon: FileQuestion },
-    { id: "Question Review", label: isHindi ? "समीक्षा स्टूडियो" : "Question Review", icon: CheckSquare },
-    { id: "Quiz Studio", label: isHindi ? "प्रश्नोत्तरी स्टूडियो" : "Quiz Studio", icon: PenTool },
-    { id: "Published Quizzes", label: isHindi ? "प्रकाशित प्रश्नोत्तरी" : "Published Quizzes", icon: Layers },
-    { id: "Learner Results", label: isHindi ? "प्रशिक्षु परिणाम" : "Learner Results", icon: BarChart2 },
-    { id: "Profile", label: isHindi ? "प्रोफ़ाइल" : "Profile", icon: UserRound },
+    { id: "Dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { id: "Learning Materials", label: t("nav.materials"), icon: BookOpen },
+    { id: "Upload Material", label: t("nav.uploadMaterial"), icon: FilePlus },
+    { id: "AI Question Generator", label: t("nav.aiGenerator"), icon: FileQuestion },
+    { id: "Question Review", label: t("nav.questionReview"), icon: CheckSquare },
+    { id: "Quiz Studio", label: t("nav.quizStudio"), icon: PenTool },
+    { id: "Published Quizzes", label: t("nav.publishedQuizzes"), icon: Layers },
+    { id: "Learner Results", label: t("nav.learnerResults"), icon: BarChart2 },
+    { id: "Profile", label: t("nav.profile"), icon: UserRound },
   ];
 
   const handleNav = (page: string) => {
@@ -66,14 +65,14 @@ export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayou
           <div>
             <div className="text-base font-bold text-[#c2510e] tracking-tight">ShikshaSetu</div>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Content Creator
+              {t("shell.trainerRole")}
             </div>
           </div>
         </div>
 
         {/* Section label */}
         <div className="px-7 mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Trainer workspace
+          {t("shell.trainerWorkspace")}
         </div>
 
         {/* Nav items */}
@@ -103,15 +102,8 @@ export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayou
             {user?.full_name ?? "—"}
           </div>
           <div className="text-[11px] font-normal text-slate-400 truncate mb-3">
-            {user?.designation ?? user?.department ?? (isHindi ? "प्रशिक्षक" : "Trainer")}
+            {user?.designation ?? user?.department ?? t("shell.trainerRole")}
           </div>
-          <button
-            onClick={logout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-orange-50 transition-colors btn-interactive"
-          >
-            <LogOut size={15} />
-            {t("common.logout")}
-          </button>
         </div>
       </aside>
 
@@ -127,7 +119,7 @@ export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayou
       <button
         className="fixed left-4 top-4 z-50 rounded-lg bg-white p-2 shadow border border-[#f0ddd0] lg:hidden btn-interactive"
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-label="Toggle sidebar"
+        aria-label={sidebarOpen ? t("common.closeSidebar") : t("common.openSidebar")}
       >
         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
@@ -137,7 +129,7 @@ export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayou
         <header className="flex h-[68px] items-center justify-between border-b border-[#f0ddd0] bg-white px-6 lg:px-9">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
-              {isHindi ? "प्रशिक्षक कार्यक्षेत्र" : "Trainer workspace"}
+              {t("shell.trainerWorkspace")}
             </div>
             <h1 className="text-lg font-bold text-[#c2510e]">
               {navItems.find((n) => n.id === activePage)?.label || activePage}

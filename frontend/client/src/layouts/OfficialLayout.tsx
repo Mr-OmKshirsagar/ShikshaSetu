@@ -7,7 +7,6 @@ import {
   FileText,
   Gauge,
   LayoutDashboard,
-  LogOut,
   Menu,
   Star,
   Target,
@@ -40,7 +39,7 @@ const PATHWAY_STEPS = [
 
 export function OfficialLayout({ children, activePage, onNavigate }: OfficialLayoutProps) {
   const { user, logout } = useAuth();
-  const { t, isHindi } = useTranslation();
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const currentStep = activePage;
 
@@ -84,14 +83,14 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
           <div className="min-w-0">
             <div className="text-base font-bold text-[#123057] tracking-tight">ShikshaSetu</div>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">
-              {isHindi ? "क्षमता इंटेलिजेंस" : "Capability Intelligence"}
+              {t("shell.officialPathway")}
             </div>
           </div>
         </div>
 
         {/* Section label */}
         <div className="px-7 pt-5 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          {isHindi ? "शिक्षार्थी कार्यक्षेत्र" : "Learner workspace"}
+          {t("shell.officialWorkspace")}
         </div>
 
         {/* Nav items */}
@@ -124,19 +123,12 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
           <div className="text-[11px] font-normal text-slate-400 truncate mb-3">
             {user?.designation ?? user?.department ?? "—"}
           </div>
-          <button
-            onClick={logout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors active:scale-[0.98]"
-          >
-            <LogOut size={15} aria-hidden="true" />
-            {t("common.logout")}
-          </button>
         </div>
 
         {/* Capability pathway strip */}
         <div className="border-t border-[#dfe7f0] px-4 py-3 bg-[#f8fafc]">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-            {isHindi ? "क्षमता विकास पथ" : "Capability pathway"}
+            {t("shell.capabilityPathway")}
           </div>
           <div className="flex flex-wrap gap-1">
             {PATHWAY_STEPS.map((step, idx) => (
@@ -148,7 +140,7 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
                       : "bg-[#e8f5f3] text-[#0f9f92]"
                   }`}
                 >
-                  {isHindi ? step.labelHi : step.labelEn}
+                  {step.id === "Assessments" ? t("nav.assessments") : step.id === "Skill Gaps" ? t("nav.skillGaps") : step.id === "Recommendations" ? t("nav.recommendations") : step.id === "My Learning" ? t("nav.learning") : step.id === "Quizzes" ? t("nav.quizzes") : t("nav.evidence")}
                 </span>
                 {idx < PATHWAY_STEPS.length - 1 && (
                   <span className="text-[9px] text-slate-300 self-center font-mono">→</span>
@@ -172,7 +164,7 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
       <button
         className="fixed left-4 top-4 z-50 rounded-lg bg-white p-2 shadow border border-[#dfe7f0] lg:hidden active:scale-95 transition-transform"
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+        aria-label={sidebarOpen ? t("common.closeSidebar") : t("common.openSidebar")}
       >
         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
@@ -182,7 +174,7 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
         <header className="flex h-[68px] items-center justify-between border-b border-[#dfe7f0] bg-white px-6 lg:px-9 sticky top-0 z-20">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">
-              {isHindi ? "शिक्षासेतु कार्यक्षेत्र" : "ShikshaSetu workspace"}
+              {t("shell.officialWorkspace")}
             </div>
             <h1 className="text-lg font-bold text-[#123057]">
               {navItems.find((n) => n.id === activePage)?.label || activePage}
