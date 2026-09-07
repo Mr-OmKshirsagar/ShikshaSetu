@@ -97,21 +97,14 @@ export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayou
           })}
         </nav>
 
-        {/* User footer */}
+        {/* User footer — NO logout button here (single logout in header) */}
         <div className="border-t border-[#f0ddd0] px-5 py-4">
           <div className="mb-0.5 text-xs font-semibold text-[#c2510e] truncate">
             {user?.full_name ?? "—"}
           </div>
-          <div className="text-[11px] font-normal text-slate-400 truncate mb-3">
+          <div className="text-[11px] font-normal text-slate-400 truncate">
             {user?.designation ?? user?.department ?? (isHindi ? "प्रशिक्षक" : "Trainer")}
           </div>
-          <button
-            onClick={logout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-orange-50 transition-colors btn-interactive"
-          >
-            <LogOut size={15} />
-            {t("common.logout")}
-          </button>
         </div>
       </aside>
 
@@ -150,9 +143,11 @@ export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayou
             </span>
             <button
               onClick={logout}
-              className="rounded-lg border border-[#f0ddd0] px-3 py-1.5 text-xs font-bold text-[#c2510e] hover:bg-orange-50 transition-colors btn-interactive"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#f0ddd0] px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-orange-50 transition-colors"
+              title={t("common.logout")}
             >
-              {t("common.logout")}
+              <LogOut size={14} aria-hidden="true" />
+              <span className="hidden sm:inline">{t("common.logout")}</span>
             </button>
           </div>
         </header>
