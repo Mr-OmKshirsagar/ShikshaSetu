@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { api, clearApiCache, CompetencyAnalyticsResponse, CompetencyAnalyticsItem } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal } from "@/components/motion/MotionUtils";
 
 interface CompetencyAnalyticsProps {
@@ -18,6 +19,7 @@ interface CompetencyAnalyticsProps {
 }
 
 export function CompetencyAnalytics({ onNavigate }: CompetencyAnalyticsProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<CompetencyAnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDomain, setSelectedDomain] = useState("ALL");
@@ -59,7 +61,7 @@ export function CompetencyAnalytics({ onNavigate }: CompetencyAnalyticsProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-            Competency Intelligence Matrix
+            {t("adminPages.competencyTitle")}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Organization-wide proficiency levels vs required baselines across all 42 competency taxonomy elements.

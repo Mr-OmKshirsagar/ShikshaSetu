@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { api, clearApiCache, TrainingEffectivenessResponse } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal, ProgressBarFill } from "@/components/motion/MotionUtils";
 
 interface TrainingEffectivenessProps {
@@ -18,6 +19,7 @@ interface TrainingEffectivenessProps {
 }
 
 export function TrainingEffectiveness({ onNavigate }: TrainingEffectivenessProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<TrainingEffectivenessResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +46,7 @@ export function TrainingEffectiveness({ onNavigate }: TrainingEffectivenessProps
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-            Training Effectiveness & Evidence Ledger
+            {t("adminPages.trainingTitle")}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Tracking learning completion rates, quiz performance, and the ratio of supporting vs authoritative assessment evidence.
