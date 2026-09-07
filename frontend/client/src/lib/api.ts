@@ -920,6 +920,7 @@ async function request<T>(path: string, init: RequestInit = {}, options: { skipC
     if (response.status === 401) {
       localStorage.removeItem("shikshasetu_token");
       requestCache.clear();
+      window.dispatchEvent(new Event("shikshasetu:unauthorized"));
     }
     throw new ApiError(response.status, body.detail || "Request failed");
   }
