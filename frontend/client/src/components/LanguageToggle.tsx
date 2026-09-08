@@ -3,7 +3,7 @@ import { Globe } from "lucide-react";
 import { useTranslation, LANGUAGES } from "@/i18n";
 
 export function LanguageToggle() {
-  const { language, setLanguage } = useTranslation();
+  const { language, setLanguage, t } = useTranslation();
 
   return (
     <div className="flex items-center rounded-xl border border-slate-200/80 bg-white/90 p-1 shadow-sm backdrop-blur-sm">
@@ -22,7 +22,7 @@ export function LanguageToggle() {
                 ? "bg-[#123057] text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
-            title={`Switch to ${lang.name}`}
+            title={`${t("common.switchLanguage")}: ${lang.nativeName}`}
           >
             {lang.nativeName}
           </button>

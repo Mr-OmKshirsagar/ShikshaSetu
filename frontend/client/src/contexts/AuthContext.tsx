@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, ApiError, type User } from "@/lib/api";
+import { api, ApiError, clearApiCache, type User } from "@/lib/api";
 
 const TOKEN_KEY = "shikshasetu_token";
 
@@ -23,10 +23,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // On mount: try to restore session from stored token
   useEffect(() => {
+    const handleUnauthorized = () => {
+      localStorage.removeItem(TOKEN_KEY);
+      sessionStorage.clear();
+      clearApiCache();
+      setUser(null);
+    };
+    window.addEventListener("shikshasetu:unauthorized", handleUnauthorized);
+
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) {
       setLoading(false);
-      return;
+      return () => window.removeEventListener("shikshasetu:unauthorized", handleUnauthorized);
     }
 
     api.auth
@@ -43,6 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => {
         setLoading(false);
       });
+
+    return () => window.removeEventListener("shikshasetu:unauthorized", handleUnauthorized);
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -53,6 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.clear();
+    clearApiCache();
     setUser(null);
   }, []);
 

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { api, clearApiCache, CapacityPlanningResponse, CapacityInterventionItem } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal } from "@/components/motion/MotionUtils";
 
 interface CapacityPlanningProps {
@@ -18,6 +19,7 @@ interface CapacityPlanningProps {
 }
 
 export function CapacityPlanning({ onNavigate }: CapacityPlanningProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<CapacityPlanningResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +46,7 @@ export function CapacityPlanning({ onNavigate }: CapacityPlanningProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-            Capacity Planning & Interventions
+            {t("adminPages.capacityTitle")}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Prioritized training initiatives and curriculum demand to systematically eliminate organizational skill gaps.

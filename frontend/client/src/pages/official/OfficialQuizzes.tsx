@@ -24,6 +24,7 @@ import {
   type QuizAttemptResult,
 } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal } from "@/components/motion/MotionUtils";
 
 interface OfficialQuizzesProps {
@@ -78,6 +79,7 @@ function LevelBar({ before, after, max = 5 }: { before: number; after: number; m
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function OfficialQuizzes({ initialCompetencyCode, onNavigate }: OfficialQuizzesProps) {
+  const { t } = useTranslation();
   // List phase
   const [assignedQuizzes, setAssignedQuizzes] = useState<AssignedQuiz[]>([]);
   const [listLoading, setListLoading] = useState(true);
@@ -580,7 +582,7 @@ export function OfficialQuizzes({ initialCompetencyCode, onNavigate }: OfficialQ
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#123057]">Assigned Quizzes</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#123057]">{t("quizzes.assigned")}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Practice quizzes assigned by curriculum trainers to test domain knowledge.
           </p>

@@ -16,6 +16,7 @@ import {
 import { api, clearApiCache, CompetencyEvidence, LearningActivity } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 
 interface OfficialEvidenceProps {
   onNavigate: (page: string) => void;
@@ -23,6 +24,7 @@ interface OfficialEvidenceProps {
 
 export function OfficialEvidence({ onNavigate }: OfficialEvidenceProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [evidenceItems, setEvidenceItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -117,7 +119,7 @@ export function OfficialEvidence({ onNavigate }: OfficialEvidenceProps) {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-black text-[#123057]">Competency Evidence Ledger</h1>
+          <h1 className="text-2xl font-black text-[#123057]">{t("evidence.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Immutable timeline of authoritative assessment outcomes and supporting learning records.
           </p>

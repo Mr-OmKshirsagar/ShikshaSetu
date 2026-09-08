@@ -44,6 +44,71 @@ _RRF_K: int = 60
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
+def search_glossary(
+    database: Database,
+    query: str,
+    limit: int = 5,
+) -> List[Tuple["DocumentChunk", float]]:
+    """
+    High-precision glossary lookup in the `rag_glossary` collection.
+    Returns synthetic DocumentChunk objects for each matching concept.
+    Tries $text index first, falls back to term regex.
+    """
+    from app.ai.models import DocumentChunk
+
+    results: List[Tuple[DocumentChunk, float]] = []
+    collection = database.get_collection("rag_glossary")
+
+    # Try full-text search
+    try:
+        cursor = collection.find(
+            {"$text": {"$search": query}},
+            {"score": {"$meta": "textScore"}},
+        ).sort([("score", {"$meta": "textScore"})]).limit(limit)
+        docs = list(cursor)
+        if not docs:
+            raise Exception("no text results")
+    except Exception:
+        # Fallback: regex on term + aliases
+        words = [w for w in re.split(r"\W+", query.lower()) if len(w) >= 3]
+        if not words:
+            return []
+        regex_q = "|".join(words[:4])
+        cursor = collection.find({
+            "$or": [
+                {"term": {"$regex": regex_q, "$options": "i"}},
+                {"aliases": {"$regex": regex_q, "$options": "i"}},
+                {"definition": {"$regex": regex_q, "$options": "i"}},
+            ]
+        }).limit(limit)
+        docs = list(cursor)
+
+    for i, doc in enumerate(docs):
+        term = doc.get("term", "")
+        definition = doc.get("definition", "")
+        source = doc.get("source_document", "MoSPI Glossary")
+        aliases_str = ", ".join(doc.get("aliases", []))
+        text = f"**{term}**: {definition}"
+        if aliases_str:
+            text += f" [Also known as: {aliases_str}]"
+
+        chunk = DocumentChunk(
+            material_id=f"glossary:{str(doc.get('_id', term))}",
+            sequence=i,
+            text=text,
+            source_section=f"Glossary — {term}",
+            document_type="GLOSSARY",
+            domain=doc.get("domain", ""),
+            embedding_status="PENDING",
+        )
+        chunk.id = f"gl:{str(doc.get('_id', term))}"
+        # Give glossary hits a high relevance score so they rank first
+        score = 1.0 - (i * 0.05)
+        results.append((chunk, score))
+
+    return results
+
+
 def hybrid_retrieve(
     database: Database,
     query: str,
@@ -121,36 +186,67 @@ def retrieve_for_chatbot(
     top_k_keyword: int = 15,
     top_k_vector: int = 15,
     competency_code: Optional[str] = None,
+    use_glossary: bool = False,
 ) -> List[Tuple[DocumentChunk, float]]:
+    # Expand query using synonym dictionary before retrieval
+    try:
+        from app.rag.datasets.seed_synonyms import expand_query
+        expanded_query = expand_query(database, query, max_expansions=3)
+        if expanded_query != query:
+            logger.debug("Query expanded: %r → %r", query[:50], expanded_query[:80])
+    except Exception:
+        expanded_query = query
     """
     Chatbot-specific retrieval: searches across ALL materials and also
     searches learning_resources for course-level context.
+    If use_glossary=True, searches the rag_glossary collection first and
+    prepends those results before document chunk retrieval.
 
     Returns merged list enriched with learning resource chunks (as synthetic
     DocumentChunk objects from resource metadata).
     """
-    # Document chunks from hybrid search
+    seen_ids: set = set()
+    final_results: List[Tuple[DocumentChunk, float]] = []
+
+    # ── Glossary branch (high precision, prepended) ───────────────────────────
+    if use_glossary:
+        try:
+            gloss_results = search_glossary(database, query, limit=3)
+            for rc, score in gloss_results:
+                cid = str(rc.id)
+                if cid not in seen_ids:
+                    final_results.append((rc, score + 1.0))  # boost glossary above doc chunks
+                    seen_ids.add(cid)
+            logger.debug("Glossary branch: %d hits", len(gloss_results))
+        except Exception as exc:
+            logger.warning("Glossary search failed: %s", exc)
+
+    # ── Document chunks from hybrid search ────────────────────────────────────
     chunk_results = hybrid_retrieve(
         database=database,
-        query=query,
+        query=expanded_query,          # use the synonym-expanded query
         embedding_provider=embedding_provider,
         top_k_keyword=top_k_keyword,
         top_k_vector=top_k_vector,
         competency_code=competency_code,
     )
+    for c, s in chunk_results:
+        cid = str(c.id)
+        if cid not in seen_ids:
+            final_results.append((c, s))
+            seen_ids.add(cid)
 
-    # Augment with learning_resource metadata (course titles, providers, competencies)
+    # ── Learning resource metadata ─────────────────────────────────────────────
     resource_chunks = _learning_resource_search(database, query, limit=6, competency_code=competency_code)
-    resource_scores = [(rc, 0.4) for rc in resource_chunks]  # fixed relevance weight
+    for rc, score in [(rc, 0.4) for rc in resource_chunks]:
+        cid = str(rc.id)
+        if cid not in seen_ids:
+            final_results.append((rc, score))
+            seen_ids.add(cid)
 
-    # Merge: chunk results first (they have real content), resource chunks appended
-    seen_ids = {str(c.id) for c, _ in chunk_results}
-    for rc, score in resource_scores:
-        if str(rc.id) not in seen_ids:
-            chunk_results.append((rc, score))
-            seen_ids.add(str(rc.id))
-
-    return chunk_results
+    # Re-sort and return
+    final_results.sort(key=lambda x: x[1], reverse=True)
+    return final_results
 
 
 # ── Keyword retrieval ─────────────────────────────────────────────────────────
