@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   Award,
-  BarChart2,
   BookOpen,
   ClipboardCheck,
   FileText,
@@ -19,42 +18,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 interface OfficialLayoutProps {
   children: React.ReactNode;
   activePage: string;
   onNavigate: (page: string) => void;
 }
 
-const PATHWAY_STEPS = [
-  { id: "Assessments", labelEn: "Assess", labelHi: "मूल्यांकन" },
-  { id: "Skill Gaps", labelEn: "Gaps", labelHi: "कमियां" },
-  { id: "Recommendations", labelEn: "Plan", labelHi: "योजना" },
-  { id: "My Learning", labelEn: "Learn", labelHi: "सीखें" },
-  { id: "Quizzes", labelEn: "Practice", labelHi: "अभ्यास" },
-  { id: "Evidence", labelEn: "Evidence", labelHi: "प्रमाण" },
-];
-
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function OfficialLayout({ children, activePage, onNavigate }: OfficialLayoutProps) {
   const { user, logout } = useAuth();
   const { t, isHindi } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const currentStep = activePage;
 
   const navItems = [
-    { id: "Dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
-    { id: "My Competencies", label: t("nav.competencies"), icon: Gauge },
-    { id: "Assessments", label: t("nav.assessments"), icon: ClipboardCheck },
-    { id: "Skill Gaps", label: t("nav.skillGaps"), icon: Target },
-    { id: "Recommendations", label: t("nav.recommendations"), icon: BookOpen },
-    { id: "My Learning", label: t("nav.learning"), icon: Star },
-    { id: "Quizzes", label: t("nav.quizzes"), icon: Award },
-    { id: "Evidence", label: t("nav.evidence"), icon: FileText },
-    { id: "Progress", label: t("nav.progress"), icon: TrendingUp },
-    { id: "Profile", label: t("nav.profile"), icon: UserRound },
+    { id: "Dashboard",        label: t("nav.dashboard"),       icon: LayoutDashboard },
+    { id: "My Competencies",  label: t("nav.competencies"),    icon: Gauge },
+    { id: "Assessments",      label: t("nav.assessments"),     icon: ClipboardCheck },
+    { id: "Skill Gaps",       label: t("nav.skillGaps"),       icon: Target },
+    { id: "Recommendations",  label: t("nav.recommendations"), icon: BookOpen },
+    { id: "My Learning",      label: t("nav.learning"),        icon: Star },
+    { id: "Quizzes",          label: t("nav.quizzes"),         icon: Award },
+    { id: "Evidence",         label: t("nav.evidence"),        icon: FileText },
+    { id: "Progress",         label: t("nav.progress"),        icon: TrendingUp },
+    { id: "Profile",          label: t("nav.profile"),         icon: UserRound },
   ];
 
   const handleNav = (page: string) => {
@@ -77,9 +62,7 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
             alt="ShikshaSetu"
             className="h-9 w-9 flex-shrink-0"
             aria-hidden="true"
-            onError={(e) => {
-              (e.currentTarget as HTMLElement).style.display = "none";
-            }}
+            onError={(e) => { (e.currentTarget as HTMLElement).style.display = "none"; }}
           />
           <div className="min-w-0">
             <div className="text-base font-bold text-[#123057] tracking-tight">ShikshaSetu</div>
@@ -102,59 +85,32 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
               <button
                 key={id}
                 onClick={() => handleNav(id)}
-                className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-xs transition-all duration-180 active:scale-[0.98] group ${
+                className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-xs transition-all duration-150 active:scale-[0.98] group ${
                   isActive
-                    ? "bg-[#e8f5f3] text-[#087f76] shadow-xs font-semibold nav-pill-active"
+                    ? "bg-[#e8f5f3] text-[#087f76] shadow-xs font-semibold"
                     : "text-slate-600 font-medium hover:bg-slate-50 hover:text-[#123057]"
                 }`}
                 aria-current={isActive ? "page" : undefined}
               >
-                <Icon size={17} className={`transition-transform duration-160 ${isActive ? "scale-105 text-[#087f76]" : "text-slate-400 group-hover:scale-110 group-hover:text-[#123057]"}`} />
+                <Icon
+                  size={17}
+                  className={`transition-transform duration-150 ${
+                    isActive ? "scale-105 text-[#087f76]" : "text-slate-400 group-hover:scale-110 group-hover:text-[#123057]"
+                  }`}
+                />
                 <span>{label}</span>
               </button>
             );
           })}
         </nav>
 
-        {/* User footer */}
+        {/* User footer — NO logout button here (logout is in the header) */}
         <div className="border-t border-[#dfe7f0] px-5 py-4">
           <div className="mb-0.5 text-xs font-semibold text-[#123057] truncate">
             {user?.full_name ?? "—"}
           </div>
-          <div className="text-[11px] font-normal text-slate-400 truncate mb-3">
+          <div className="text-[11px] font-normal text-slate-400 truncate">
             {user?.designation ?? user?.department ?? "—"}
-          </div>
-          <button
-            onClick={logout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors active:scale-[0.98]"
-          >
-            <LogOut size={15} aria-hidden="true" />
-            {t("common.logout")}
-          </button>
-        </div>
-
-        {/* Capability pathway strip */}
-        <div className="border-t border-[#dfe7f0] px-4 py-3 bg-[#f8fafc]">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-            {isHindi ? "क्षमता विकास पथ" : "Capability pathway"}
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {PATHWAY_STEPS.map((step, idx) => (
-              <React.Fragment key={step.id}>
-                <span
-                  className={`text-[9px] font-semibold px-2 py-0.5 rounded-md transition-all duration-200 ${
-                    currentStep === step.id
-                      ? "bg-[#0f9f92] text-white shadow-xs scale-105"
-                      : "bg-[#e8f5f3] text-[#0f9f92]"
-                  }`}
-                >
-                  {isHindi ? step.labelHi : step.labelEn}
-                </span>
-                {idx < PATHWAY_STEPS.length - 1 && (
-                  <span className="text-[9px] text-slate-300 self-center font-mono">→</span>
-                )}
-              </React.Fragment>
-            ))}
           </div>
         </div>
       </aside>
@@ -162,7 +118,7 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
       {/* ── Mobile overlay ── */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-xs transition-opacity lg:hidden"
+          className="fixed inset-0 z-30 bg-black/20 lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
@@ -170,9 +126,9 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
 
       {/* ── Hamburger ── */}
       <button
-        className="fixed left-4 top-4 z-50 rounded-lg bg-white p-2 shadow border border-[#dfe7f0] lg:hidden active:scale-95 transition-transform"
+        className="fixed left-4 top-4 z-50 rounded-lg bg-white p-2 shadow border border-[#dfe7f0] lg:hidden"
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+        aria-label={sidebarOpen ? (isHindi ? "साइडबार बंद करें" : "Close sidebar") : (isHindi ? "साइडबार खोलें" : "Open sidebar")}
       >
         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
@@ -188,20 +144,25 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
               {navItems.find((n) => n.id === activePage)?.label || activePage}
             </h1>
           </div>
+          {/* Single logout location — top-right header */}
           <div className="flex items-center gap-3">
             <LanguageToggle />
-            <span className="hidden text-xs font-semibold text-slate-500 sm:block truncate max-w-[160px]">
+            <span className="hidden text-xs font-semibold text-slate-500 sm:block truncate max-w-[140px]">
               {user?.full_name}
             </span>
             <button
               onClick={logout}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-[#123057] hover:bg-slate-50 transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              title={t("common.logout")}
             >
-              {t("common.logout")}
+              <LogOut size={14} aria-hidden="true" />
+              <span className="hidden sm:inline">{t("common.logout")}</span>
             </button>
           </div>
         </header>
-        <div key={activePage} className="mx-auto max-w-[1240px] p-6 lg:p-9 anim-page-enter">{children}</div>
+        <div key={activePage} className="mx-auto max-w-[1240px] p-6 lg:p-9">
+          {children}
+        </div>
       </main>
     </div>
   );

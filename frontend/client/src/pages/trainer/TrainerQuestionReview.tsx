@@ -17,6 +17,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { api, clearApiCache, TrainerQuestion, QuestionReviewStatus, LearningMaterial } from "@/lib/api";
+import { useTranslation } from "@/i18n";
 import { toast } from "sonner";
 
 interface TrainerQuestionReviewProps {
@@ -28,6 +29,7 @@ export function TrainerQuestionReview({
   initialMaterialId,
   onNavigate,
 }: TrainerQuestionReviewProps) {
+  const { t } = useTranslation();
   const [questions, setQuestions] = useState<TrainerQuestion[]>([]);
   const [materials, setMaterials] = useState<LearningMaterial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,15 +110,26 @@ export function TrainerQuestionReview({
 
   const handleApprove = async (q: TrainerQuestion) => {
     const qid = q.id || q.question_id || (q as any)._id;
+    if (!qid) {
+      toast.error("Cannot approve: question ID is missing.");
+      return;
+    }
     try {
-      await api.trainer.questions.approve(qid);
+      const updated = await api.trainer.questions.approve(qid);
       toast.success("Question approved! It can now be used in published quizzes.");
       setQuestions((prev) =>
-        prev.map((item) =>
-          (item.id || item.question_id || (item as any)._id) === qid
-            ? { ...item, status: "APPROVED" as QuestionReviewStatus }
-            : item
-        )
+        prev.map((item) => {
+          const itemId = item.id || item.question_id || (item as any)._id;
+          if (itemId === qid) {
+            // Merge updated response carefully — preserve local fields if API omits them
+            return {
+              ...item,
+              status: "APPROVED" as QuestionReviewStatus,
+              ...(updated && typeof updated === "object" ? updated : {}),
+            };
+          }
+          return item;
+        })
       );
     } catch (err: any) {
       toast.error(err.message || "Failed to approve question");
@@ -159,19 +172,22 @@ export function TrainerQuestionReview({
 
       toast.success("Question edited successfully! Status set to EDITED.");
       setQuestions((prev) =>
-        prev.map((item) =>
-          (item.id || item.question_id || (item as any)._id) === qid
-            ? {
-                ...item,
-                ...updated,
-                question: editForm.question,
-                options: editForm.options,
-                correct_answer: editForm.correct_answer,
-                explanation: editForm.explanation,
-                status: "EDITED" as QuestionReviewStatus,
-              }
-            : item
-        )
+        prev.map((item) => {
+          const itemId = item.id || item.question_id || (item as any)._id;
+          if (itemId === qid) {
+            return {
+              ...item,
+              // Only update the fields we actually edited — don't spread full API response
+              // to avoid accidentally overwriting local fields with unexpected data
+              question: editForm.question,
+              options: editForm.options,
+              correct_answer: editForm.correct_answer,
+              explanation: editForm.explanation,
+              status: "EDITED" as QuestionReviewStatus,
+            };
+          }
+          return item;
+        })
       );
       setEditModalOpen(false);
       setEditingQuestion(null);
@@ -242,9 +258,9 @@ export function TrainerQuestionReview({
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">Question Review Studio</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("trainer.questionReview")}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Audit AI-generated MCQs, edit inaccuracies, and approve questions for authorized assessments.
+            {t("trainer.questionReviewSubtitle")}
           </p>
         </div>
 
@@ -254,7 +270,7 @@ export function TrainerQuestionReview({
             className="flex items-center gap-1.5 rounded-xl border border-[#f0ddd0] bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-orange-50 btn-interactive"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            Refresh Pool
+            {t("trainer.refreshPool")}
           </button>
 
           <button
@@ -275,7 +291,7 @@ export function TrainerQuestionReview({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search questions by keyword or competency..."
+            placeholder={t("trainer.searchPlaceholder")}
             className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
           />
           {searchQuery && (
@@ -415,10 +431,9 @@ export function TrainerQuestionReview({
 
                 {/* Options Grid */}
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {q.options &&
-                    q.options.map((opt, optIdx) => {
-                      const letter = String.fromCharCode(65 + optIdx);
-                      const isCorrect = letter === q.correct_answer;
+                  {(q.options || []).map((opt, optIdx) => {
+                    const letter = String.fromCharCode(65 + optIdx);
+                    const isCorrect = letter === q.correct_answer;
 
                       return (
                         <div
@@ -476,7 +491,7 @@ export function TrainerQuestionReview({
                       onClick={() => openEditModal(q)}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 btn-interactive"
                     >
-                      <Edit3 size={13} /> Edit Question
+                      <Edit3 size={13} /> {t("trainer.editQuestion")}
                     </button>
 
                     {!isRejected && (
@@ -484,7 +499,7 @@ export function TrainerQuestionReview({
                         onClick={() => openRejectModal(q)}
                         className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50 btn-interactive"
                       >
-                        <XCircle size={13} /> Reject
+                        <XCircle size={13} /> {t("common.reject")}
                       </button>
                     )}
 
@@ -493,7 +508,7 @@ export function TrainerQuestionReview({
                         onClick={() => handleApprove(q)}
                         className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-700 btn-interactive"
                       >
-                        <CheckCircle2 size={13} /> Approve Question
+                        <CheckCircle2 size={13} /> {t("trainer.approveQuestion")}
                       </button>
                     )}
                   </div>
@@ -511,7 +526,7 @@ export function TrainerQuestionReview({
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg font-extrabold text-slate-800">
-                  Edit Assessment Question
+                {t("trainer.editQuestion")}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Refine question phrasing, options, or explanation
@@ -529,7 +544,7 @@ export function TrainerQuestionReview({
               {/* Question Text */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Question Stem
+                  {t("trainer.questionStem")}
                 </label>
                 <textarea
                   value={editForm.question}
@@ -543,7 +558,7 @@ export function TrainerQuestionReview({
               {/* Options */}
               <div className="space-y-3">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Multiple Choice Options
+                  {t("trainer.optionLabel")}
                 </label>
                 {editForm.options.map((opt, optIdx) => {
                   const letter = String.fromCharCode(65 + optIdx);
@@ -572,7 +587,7 @@ export function TrainerQuestionReview({
               {/* Correct Answer Selector */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Correct Answer Key
+                  {t("trainer.correctAnswerKey")}
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {["A", "B", "C", "D"].map((letter) => (
@@ -621,7 +636,7 @@ export function TrainerQuestionReview({
                   disabled={savingEdit}
                   className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {savingEdit ? "Saving..." : "Save Modifications"}
+                  {savingEdit ? t("common.loading") : t("trainer.saveEdits")}
                 </button>
               </div>
             </form>
@@ -635,7 +650,7 @@ export function TrainerQuestionReview({
           <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-rose-200 anim-scale-in">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-rose-800 flex items-center gap-2">
-                <XCircle size={18} /> Reject Question
+                <XCircle size={18} /> {t("trainer.rejectQuestion")}
               </h3>
               <button
                 onClick={() => setRejectModalOpen(false)}
@@ -652,14 +667,14 @@ export function TrainerQuestionReview({
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700">
-                  Rejection Reason / Notes:
+                  {t("trainer.rejectReason")}:
                 </label>
                 <textarea
                   value={rejectNotes}
                   onChange={(e) => setRejectNotes(e.target.value)}
                   rows={3}
                   className="w-full rounded-xl border border-rose-200 p-3 text-xs text-slate-800 focus:border-rose-500 focus:outline-none"
-                  placeholder="e.g., Option B is ambiguous, and source text does not support this definition..."
+                  placeholder={t("trainer.rejectPlaceholder")}
                   required
                 />
               </div>
@@ -677,7 +692,7 @@ export function TrainerQuestionReview({
                   disabled={submittingReject}
                   className="rounded-xl bg-rose-600 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-rose-700 disabled:opacity-50 btn-interactive"
                 >
-                  {submittingReject ? "Rejecting..." : "Confirm Rejection"}
+                  {submittingReject ? t("common.loading") : t("trainer.confirmReject")}
                 </button>
               </div>
             </form>

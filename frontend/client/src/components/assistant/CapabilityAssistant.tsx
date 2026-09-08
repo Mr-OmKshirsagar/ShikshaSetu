@@ -68,8 +68,8 @@ export function CapabilityAssistant({
       id: "welcome-1",
       sender: "assistant",
       text: isHindi
-        ? `**नमस्ते अधिकारी।** मैं आपका **कर्मयोगी एआई सह-पायलट (Co-Pilot)** हूँ।\n\nमैं राष्ट्रीय सिविल सेवा क्षमता ढांचे, सत्यापित आईगॉट कर्मयोगी कैटलॉग और आपके व्यक्तिगत क्षमता प्रोफ़ाइल पर आधारित हूँ।\n\nआज मैं आपके क्षमता विकास में किस प्रकार सहायता कर सकता हूँ?`
-        : `**Namaste Officer.** I am your **Karmayogi AI Co-Pilot**.\n\nI am grounded in the National Civil Services Competency Framework, verified iGOT Karmayogi catalog, and your personalized capability profile.\n\nHow can I support your capability development today?`,
+        ? `**नमस्ते अधिकारी।** मैं आपका **शिक्षासेतु एआई सहायक** हूँ।\n\nमैं राष्ट्रीय सिविल सेवा क्षमता ढांचे, सत्यापित आईगॉट कर्मयोगी कैटलॉग और आपके व्यक्तिगत क्षमता प्रोफ़ाइल पर आधारित हूँ।\n\nआज मैं आपके क्षमता विकास में किस प्रकार सहायता कर सकता हूँ?`
+        : `**Namaste Officer.** I am your **ShikshaSetu AI Assistant**.\n\nI am grounded in the National Civil Services Competency Framework, verified iGOT Karmayogi catalog, and your personalized capability profile.\n\nHow can I support your capability development today?`,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       suggested_actions: [
         {
@@ -132,13 +132,13 @@ export function CapabilityAssistant({
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      toast.error(err.message || "Failed to reach Karmayogi AI Co-Pilot");
+      toast.error(err.message || "Failed to reach ShikshaSetu AI Assistant");
       setMessages((prev) => [
         ...prev,
         {
           id: `error-${Date.now()}`,
           sender: "assistant",
-          text: `⚠️ **Connection Notice**: Unable to contact the AI Co-Pilot service. Please verify your network connection or try again shortly.`,
+          text: `⚠️ **Connection Notice**: Unable to contact the ShikshaSetu AI Assistant. Please verify your network connection or try again shortly.`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
@@ -162,7 +162,7 @@ export function CapabilityAssistant({
           id="karmayogi-copilot-trigger"
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-full bg-gradient-to-r from-[#123057] via-[#204e8a] to-[#087f76] px-5 py-3 text-white shadow-xl hover:shadow-2xl btn-interactive border border-white/20 group"
-          title="Open Karmayogi AI Co-Pilot"
+          title="Open ShikshaSetu AI Assistant"
         >
           <div className="relative">
             <Sparkles size={18} className="text-[#ef7e37] animate-pulse" />
@@ -171,7 +171,7 @@ export function CapabilityAssistant({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
             </span>
           </div>
-          <span className="text-xs font-black tracking-wide">Karmayogi AI Co-Pilot</span>
+          <span className="text-xs font-black tracking-wide">{t("assistant.title")}</span>
           <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-teal-200 anim-badge-pop">
             Assistant
           </span>
@@ -218,7 +218,7 @@ export function CapabilityAssistant({
               <button
                 onClick={() => setIsOpen(false)}
                 className="rounded-lg p-1.5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
-                title="Close Co-Pilot"
+                title="Close Assistant"
               >
                 <X size={17} />
               </button>

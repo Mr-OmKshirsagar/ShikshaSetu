@@ -394,7 +394,7 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
 
           <div className="mt-6 rounded-xl bg-orange-50/50 border border-orange-100 p-3 text-center">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#ef7e37]">
-              SIH 2026 Team Kinetics
+              ShikshaSetu Platform
             </span>
           </div>
         </div>

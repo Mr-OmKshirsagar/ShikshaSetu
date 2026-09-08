@@ -182,7 +182,7 @@ export default function LoginPage() {
               </div>
               <p className="text-sm text-blue-200 leading-6">
                 A unified platform for department-specific skill gap analysis, AI-driven learning,
-                and verifiable professional growth — built for Smart India Hackathon.
+                and verifiable professional growth for Indian civil services.
               </p>
             </div>
 
@@ -230,7 +230,7 @@ export default function LoginPage() {
             {/* Header */}
             <div className="mb-6">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#0f9f92]/20 bg-[#e8f6f3] px-3 py-1 text-[11px] font-semibold text-[#0f9f92] anim-badge-pop">
-                Smart India Hackathon · Capability Intelligence
+                ShikshaSetu · Capability Intelligence Platform
               </div>
               <div className="text-2xl font-bold text-[#123057] tracking-tight">
                 {isRegister ? "Create account" : "Welcome back"}

@@ -150,7 +150,7 @@ function Auth({ onLogin }: { onLogin: (user: User) => void }) {
       <div className="w-full max-w-[480px] rounded-3xl border border-[#dfe7f0] bg-white p-8 shadow-xl">
         <div className="mb-8">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal/20 bg-[#e8f6f3] px-3 py-1 text-[11px] font-bold text-teal">
-            Smart India Hackathon · Capability Intelligence
+            ShikshaSetu · Capability Intelligence Platform
           </div>
           <div className="text-2xl font-extrabold text-navy">ShikshaSetu</div>
           <p className="mt-2 text-sm text-slate-500">
