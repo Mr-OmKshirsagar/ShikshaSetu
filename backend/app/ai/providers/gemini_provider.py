@@ -81,6 +81,38 @@ class GeminiLLMProvider(LLMProvider):
             logger.error(f"Gemini generation failed: {e}")
             raise Exception(f"Gemini LLM error: {str(e)}")
 
+    def generate_stream(
+        self,
+        prompt: str,
+        max_tokens: Optional[int] = None,
+        temperature: float = 0.7,
+    ):
+        """
+        Generate streaming text chunks using Gemini.
+
+        Yields:
+            Text chunk deltas as strings.
+        """
+        if not self._available or self.client is None:
+            raise Exception("Gemini model not properly configured")
+
+        try:
+            config = types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens or 600,
+            )
+            response_stream = self.client.models.generate_content_stream(
+                model=self.model_name,
+                contents=prompt,
+                config=config,
+            )
+            for chunk in response_stream:
+                if chunk and chunk.text:
+                    yield chunk.text
+        except Exception as e:
+            logger.error(f"Gemini streaming generation failed: {e}")
+            raise Exception(f"Gemini LLM streaming error: {str(e)}")
+
     def generate_json(
         self,
         prompt: str,

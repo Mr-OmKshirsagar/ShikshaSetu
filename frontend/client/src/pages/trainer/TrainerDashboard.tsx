@@ -76,17 +76,17 @@ export function TrainerDashboard({ onNavigate }: TrainerDashboardProps) {
               Upload public-service curriculum, generate AI-grounded MCQs, audit & approve valid questions, assemble authoritative quizzes, and provide qualitative feedback to civil servants.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0 lg:items-end lg:ml-auto">
+          <div className="flex flex-row gap-3 shrink-0 items-center flex-wrap">
             <button
               onClick={() => onNavigate("Upload Material")}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ef7e37] px-6 py-3 text-sm font-semibold text-white shadow-md hover:bg-[#d96a27] btn-interactive w-full sm:w-48"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ef7e37] px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#d96a27] btn-interactive whitespace-nowrap"
             >
               <FilePlus size={16} />
               Upload Material
             </button>
             <button
               onClick={() => onNavigate("AI Question Generator")}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 px-6 py-3 text-sm font-semibold text-white hover:bg-white/20 btn-interactive w-full sm:w-48"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/20 btn-interactive whitespace-nowrap"
             >
               <FileQuestion size={16} />
               Generate Questions

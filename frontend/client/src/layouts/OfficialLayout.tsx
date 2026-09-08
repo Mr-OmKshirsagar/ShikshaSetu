@@ -17,6 +17,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/i18n";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { CapabilityAssistant } from "@/components/assistant/CapabilityAssistant";
 
 interface OfficialLayoutProps {
   children: React.ReactNode;
@@ -24,11 +25,12 @@ interface OfficialLayoutProps {
   onNavigate: (page: string) => void;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function OfficialLayout({ children, activePage, onNavigate }: OfficialLayoutProps) {
   const { user, logout } = useAuth();
   const { t, isHindi } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const navItems = [
     { id: "Dashboard",        label: t("nav.dashboard"),       icon: LayoutDashboard },
     { id: "My Competencies",  label: t("nav.competencies"),    icon: Gauge },
@@ -146,6 +148,11 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
           </div>
           {/* Single logout location — top-right header */}
           <div className="flex items-center gap-3">
+            <CapabilityAssistant
+              currentPage={activePage}
+              onNavigate={onNavigate}
+              headerMode
+            />
             <LanguageToggle />
             <span className="hidden text-xs font-semibold text-slate-500 sm:block truncate max-w-[140px]">
               {user?.full_name}

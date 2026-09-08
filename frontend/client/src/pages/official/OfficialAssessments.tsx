@@ -852,9 +852,6 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-black text-[#123057]">Adaptive Capability Assessments</h1>
-                <span className="rounded-md bg-teal-100 px-2 py-0.5 text-[10px] font-extrabold text-teal-800 uppercase tracking-wider">
-                  Phase 3C Active
-                </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 Dynamic Step-Up / Step-Down Engine · Authoritative Evidence (0.85 Confidence)

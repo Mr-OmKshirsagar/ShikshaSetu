@@ -124,58 +124,60 @@ def build_copilot_user_prompt(
     context_page: str | None = None,
 ) -> str:
     """Formats the user query alongside their isolated capability context and RAG chunks."""
+    sections = []
     profile = context_data.get("profile", {})
-    top_gaps = context_data.get("top_gaps", [])
-    recommendations = context_data.get("recommendations", [])
-    active_learning_count = context_data.get("active_learning_count", 0)
-    completed_learning_count = context_data.get("completed_learning_count", 0)
-    supporting_evidence_count = context_data.get("supporting_evidence_count", 0)
-    authoritative_evidence_count = context_data.get("authoritative_evidence_count", 0)
+    if profile:
+        top_gaps = context_data.get("top_gaps", [])
+        recommendations = context_data.get("recommendations", [])
+        active_learning_count = context_data.get("active_learning_count", 0)
+        completed_learning_count = context_data.get("completed_learning_count", 0)
+        supporting_evidence_count = context_data.get("supporting_evidence_count", 0)
+        authoritative_evidence_count = context_data.get("authoritative_evidence_count", 0)
 
-    gaps_formatted = "\n".join([
-        f"- **{g.get('competency_name', g.get('competency_code'))}** ({g.get('competency_code')}): "
-        f"Current Level {g.get('current_level')}/5.0, Required {g.get('required_level')}/5.0 "
-        f"(Gap: {g.get('gap')}, Priority: {g.get('priority')})"
-        for g in top_gaps
-    ]) or "No active skill gaps identified for current role."
+        gaps_formatted = "\n".join([
+            f"- **{g.get('competency_name', g.get('competency_code'))}** ({g.get('competency_code')}): "
+            f"Current Level {g.get('current_level')}/5.0, Required {g.get('required_level')}/5.0 "
+            f"(Gap: {g.get('gap')}, Priority: {g.get('priority')})"
+            for g in top_gaps
+        ]) or "No active skill gaps identified for current role."
 
-    recs_formatted = "\n".join([
-        f"- **{r.get('title')}** (Provider: {r.get('provider')}, "
-        f"Target Competency: {r.get('competency_code')}, Match Score: {r.get('score')}, "
-        f"Source: {r.get('source_doc', 'iGOT Catalog')})"
-        for r in recommendations
-    ]) or "No current recommendations generated."
+        recs_formatted = "\n".join([
+            f"- **{r.get('title')}** (Provider: {r.get('provider')}, "
+            f"Target Competency: {r.get('competency_code')}, Match Score: {r.get('score')}, "
+            f"Source: {r.get('source_doc', 'iGOT Catalog')})"
+            for r in recommendations
+        ]) or "No current recommendations generated."
 
-    rag_formatted = ""
-    if retrieved_text_chunks:
-        rag_formatted = "\n\n### RETRIEVED CURRICULUM CONTEXT:\n" + "\n---\n".join([
-            f"[Source: {c.get('source_id', 'CURRICULUM')}] {c.get('text', '')}"
-            for c in retrieved_text_chunks
-        ])
-
-    return f"""### OFFICIAL'S PROFILE:
+        sections.append(f"""### OFFICIAL'S PROFILE:
 - **Name**: {profile.get('full_name', 'Officer')}
 - **Designation**: {profile.get('designation', 'Civil Services Official')}
 - **Department**: {profile.get('department', 'Government of India')}
 - **Role**: {profile.get('role_name', profile.get('designation', 'Official'))} ({profile.get('role_code', 'OFFICIAL')})
 - **Active Workspace Page**: {context_page or 'General'}
 
-### LEARNING ACTIVITY SUMMARY:
-- Active Learning Modules: {active_learning_count}
-- Completed Modules: {completed_learning_count}
-- Supporting Evidence Records: {supporting_evidence_count}
-- Authoritative Assessment Evidence Records: {authoritative_evidence_count}
+### LEARNING & EVIDENCE STATE:
+- Active Modules: {active_learning_count} | Completed: {completed_learning_count}
+- Supporting Records: {supporting_evidence_count} | Authoritative Assessment Records: {authoritative_evidence_count}
 
-### OFFICIAL'S CURRENT SKILL GAPS (top 5 by gap size):
+### OFFICIAL'S CURRENT SKILL GAPS:
 {gaps_formatted}
 
-### PERSONALIZED RECOMMENDED PATHWAYS (top 5):
-{recs_formatted}
-{rag_formatted}
+### PERSONALIZED RECOMMENDED PATHWAYS:
+{recs_formatted}""")
 
----
-### OFFICIAL'S QUESTION:
+    if retrieved_text_chunks:
+        rag_formatted = "### RETRIEVED CURRICULUM CONTEXT:\n" + "\n---\n".join([
+            f"[Source: {c.get('source_id', 'CURRICULUM')}] {c.get('text', '')}"
+            for c in retrieved_text_chunks
+        ])
+        sections.append(rag_formatted)
+
+    context_str = "\n\n".join(sections)
+    if context_str:
+        context_str = f"{context_str}\n\n---\n"
+
+    return f"""{context_str}### OFFICIAL'S QUESTION:
 {user_message}
 
-Provide a structured, grounded, and actionable response. Stay strictly within the ShikshaSetu domain. Use the official's actual data above where relevant. If the question is unrelated to ShikshaSetu or competency development, issue a polite refusal.
+Provide a structured, grounded, and concise response. Stay strictly within the ShikshaSetu domain. Use verified citations where applicable. If the question is unrelated to ShikshaSetu or competency development, issue a polite refusal.
 """

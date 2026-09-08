@@ -1,3 +1,4 @@
+
 """Upgrade test user to TRAINER role so upload endpoint works."""
 from pymongo import MongoClient
 import os

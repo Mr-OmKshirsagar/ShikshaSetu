@@ -156,77 +156,66 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
-      {/* ── Left panel (decorative) ── */}
-      <div className="hidden lg:flex flex-col justify-between bg-[#123057] text-white w-[440px] flex-shrink-0 p-12">
-        <div>
-          <div className="flex items-center gap-3 mb-12">
-            <img
-              src="/shikshasetu-icon.svg"
-              alt=""
-              aria-hidden="true"
-              className="h-12 w-12 brightness-0 invert opacity-90"
-            />
-            <div>
-              <div className="text-xl font-extrabold tracking-tight">ShikshaSetu</div>
-              <div className="text-[10px] font-bold uppercase tracking-[.18em] text-blue-300">
-                Capability Intelligence
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <div className="text-3xl font-extrabold leading-tight mb-4 tracking-tight">
-                Empowering India's Civil Services through capability intelligence
-              </div>
-              <p className="text-sm text-blue-200 leading-6">
-                A unified platform for department-specific skill gap analysis, AI-driven learning,
-                and verifiable professional growth for Indian civil services.
-              </p>
-            </div>
-
-            <div className="space-y-3 pt-4">
-              {[
-                "Ministry & Department-specific competency frameworks",
-                "Role-targeted AI skill gap calculation",
-                "Curated iGOT Karmayogi & NSSTA learning tracks",
-                "Continuous competency evidence & assessment",
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-3 text-sm text-blue-100">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#0f9f92] flex-shrink-0 mt-2" />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#f4f7fb] text-[#18304f]">
+      <header className="mx-auto flex max-w-[1380px] items-center justify-between px-6 py-5 lg:px-12">
+        <div className="flex items-center gap-3">
+          <img src="/shikshasetu-logo.svg" alt="ShikshaSetu" className="h-16 w-auto" />
         </div>
+        <div className="hidden items-center gap-7 text-xs font-bold text-slate-500 md:flex">
+          <a href="#capabilities" className="transition-colors hover:text-[#0f9f92]">Capabilities</a>
+          <a href="#ecosystem" className="transition-colors hover:text-[#0f9f92]">Learning ecosystem</a>
+          <span className="flex items-center gap-2 text-[#123057]"><CheckCircle2 size={15} className="text-[#0f9f92]" /> Protected access</span>
+        </div>
+      </header>
 
-        <div className="rounded-2xl bg-white/5 p-4 border border-white/10 text-[11px] text-blue-200">
-          <div className="font-bold text-white mb-1 flex items-center gap-1.5">
-            <CheckCircle2 size={13} className="text-[#0f9f92]" />
-            Multi-Department Architecture
+      <main className="mx-auto grid min-h-[calc(100vh-80px)] max-w-[1380px] items-center gap-10 px-6 pb-10 pt-4 lg:grid-cols-[1.08fr_.92fr] lg:gap-16 lg:px-12 lg:pb-16">
+      {/* ── Landing hero ── */}
+      <div id="capabilities" className="relative overflow-hidden rounded-[2rem] bg-[#123057] p-8 text-white shadow-[0_24px_70px_rgba(18,48,87,.18)] md:p-12 lg:min-h-[650px]">
+        <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full border border-white/10" />
+        <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full border border-[#38d9c0]/20" />
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#38d9c0]/25 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#8ce9dc]">
+            Smart India Hackathon · Public sector learning
           </div>
-          <div>
-            Supports Ministry of Education, MoSPI, MeitY, DoPT, Finance, Health, Rural Development &amp; more.
+          <h1 className="mt-7 max-w-xl text-4xl font-extrabold leading-[1.08] tracking-[-.04em] md:text-6xl">
+            Build the capability your role demands<span className="text-[#38d9c0]">.</span>
+          </h1>
+          <p className="mt-6 max-w-lg text-sm leading-7 text-blue-100 md:text-base">
+            ShikshaSetu turns competency frameworks into a clear path from assessment to evidence-backed professional growth across India&apos;s civil services.
+          </p>
+
+          <div className="mt-10 grid max-w-lg grid-cols-3 gap-3 border-y border-white/10 py-5">
+            <div><div className="text-2xl font-extrabold text-[#38d9c0]">01</div><div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-200">Assess</div></div>
+            <div><div className="text-2xl font-extrabold text-[#38d9c0]">02</div><div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-200">Learn</div></div>
+            <div><div className="text-2xl font-extrabold text-[#38d9c0]">03</div><div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-200">Evidence</div></div>
+          </div>
+
+          <div id="ecosystem" className="mt-10 grid gap-3 sm:grid-cols-2">
+            {[
+              "Role-aware competency frameworks",
+              "Explainable AI skill-gap analysis",
+              "iGOT Karmayogi & NSSTA pathways",
+              "Continuous evidence and assessment",
+            ].map((item) => (
+              <div key={item} className="flex items-start gap-2 text-xs text-blue-100"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#38d9c0]" /><span>{item}</span></div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── Right panel (form) ── */}
-      <div className="flex flex-1 items-center justify-center bg-[#eef4f8] px-5 py-10 anim-page-enter">
+      {/* ── Sign-in panel ── */}
+      <div className="flex items-center justify-center py-4 anim-page-enter lg:py-10">
         <div className="w-full max-w-[480px]">
           {/* Mobile logo */}
           <div className="mb-6 flex items-center gap-2 lg:hidden">
             <img
-              src="/shikshasetu-icon.svg"
+              src="/shikshasetu-logo.svg"
               alt="ShikshaSetu"
-              className="h-9 w-9"
+              className="h-14 w-auto"
             />
-            <span className="text-xl font-extrabold text-[#123057]">ShikshaSetu</span>
           </div>
 
-          <div className="rounded-3xl border border-[#dfe7f0] bg-white p-8 shadow-xl anim-card-enter">
+          <div className="rounded-[2rem] border border-[#dfe7f0] bg-white p-7 shadow-[0_24px_70px_rgba(18,48,87,.12)] anim-card-enter md:p-9">
             {/* Header */}
             <div className="mb-6">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#0f9f92]/20 bg-[#e8f6f3] px-3 py-1 text-[11px] font-semibold text-[#0f9f92] anim-badge-pop">
@@ -446,6 +435,7 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+      </main>
     </div>
   );
 }

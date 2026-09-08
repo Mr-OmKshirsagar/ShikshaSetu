@@ -12,8 +12,6 @@ import {
   ExternalLink,
   ShieldCheck,
   Award,
-  Minimize2,
-  Maximize2,
 } from "lucide-react";
 import {
   api,
@@ -39,15 +37,16 @@ interface Message {
 interface CapabilityAssistantProps {
   currentPage?: string;
   onNavigate: (page: string) => void;
+  headerMode?: boolean;
 }
 
 export function CapabilityAssistant({
   currentPage = "Dashboard",
   onNavigate,
+  headerMode = false,
 }: CapabilityAssistantProps) {
   const { t, isHindi } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const starterPrompts = isHindi
     ? [
@@ -63,8 +62,7 @@ export function CapabilityAssistant({
         "How does learning evidence differ from assessments?",
       ];
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  const createWelcomeMessage = (): Message => ({
       id: "welcome-1",
       sender: "assistant",
       text: isHindi
@@ -83,11 +81,22 @@ export function CapabilityAssistant({
           target_page: "Recommendations",
         },
       ],
-    },
-  ]);
+  });
+
+  const [messages, setMessages] = useState<Message[]>([createWelcomeMessage()]);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
+  const [statusStage, setStatusStage] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleNewChat = () => {
+    abortControllerRef.current?.abort();
+    setMessages([{ ...createWelcomeMessage(), id: `welcome-${Date.now()}` }]);
+    setInputValue("");
+    setLoading(false);
+    setStatusStage("");
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -97,11 +106,16 @@ export function CapabilityAssistant({
     if (isOpen) {
       scrollToBottom();
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, statusStage]);
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputValue).trim();
     if (!text || loading) return;
+
+    // Abort any prior in-flight request
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     const userMsg: Message = {
       id: `user-${Date.now()}`,
@@ -110,40 +124,115 @@ export function CapabilityAssistant({
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
+    const assistantMessageId = `assistant-${Date.now()}`;
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputValue("");
     setLoading(true);
+    setStatusStage("Thinking...");
+
+    let hasReceivedTokens = false;
 
     try {
-      const res: AssistantChatResponse = await api.assistant.chat({
-        message: text,
-        context_page: currentPage,
-      });
-
-      const assistantMsg: Message = {
-        id: `assistant-${Date.now()}`,
-        sender: "assistant",
-        text: res.answer,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        sources: res.sources,
-        suggested_actions: res.suggested_actions,
-        model_provider: res.model_provider,
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to reach ShikshaSetu AI Assistant");
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}`,
-          sender: "assistant",
-          text: `⚠️ **Connection Notice**: Unable to contact the ShikshaSetu AI Assistant. Please verify your network connection or try again shortly.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      await api.assistant.stream(
+        { message: text, context_page: currentPage },
+        (event) => {
+          if (event.type === "status") {
+            setStatusStage(event.message || "Checking your competency context...");
+          } else if (event.type === "delta") {
+            if (!hasReceivedTokens) {
+              hasReceivedTokens = true;
+              setStatusStage(""); // hide thinking indicator once tokens start rendering
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: assistantMessageId,
+                  sender: "assistant",
+                  text: event.delta,
+                  timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                },
+              ]);
+            } else {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMessageId
+                    ? { ...m, text: m.text + event.delta }
+                    : m
+                )
+              );
+            }
+          } else if (event.type === "done") {
+            const res = event.response;
+            setStatusStage("");
+            setMessages((prev) => {
+              const exists = prev.some((m) => m.id === assistantMessageId);
+              if (exists) {
+                return prev.map((m) =>
+                  m.id === assistantMessageId
+                    ? {
+                        ...m,
+                        text: res.answer || m.text,
+                        sources: res.sources,
+                        suggested_actions: res.suggested_actions,
+                        model_provider: res.model_provider,
+                      }
+                    : m
+                );
+              } else {
+                return [
+                  ...prev,
+                  {
+                    id: assistantMessageId,
+                    sender: "assistant",
+                    text: res.answer,
+                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                    sources: res.sources,
+                    suggested_actions: res.suggested_actions,
+                    model_provider: res.model_provider,
+                  },
+                ];
+              }
+            });
+          }
         },
-      ]);
+        controller.signal
+      );
+    } catch (streamErr: any) {
+      if (streamErr.name === "AbortError") {
+        return; // User cancelled
+      }
+      // Graceful fallback to standard chat endpoint if streaming encounters an error
+      try {
+        const res = await api.assistant.chat({ message: text, context_page: currentPage });
+        setMessages((prev) => {
+          const filtered = prev.filter((m) => m.id !== assistantMessageId);
+          return [
+            ...filtered,
+            {
+              id: assistantMessageId,
+              sender: "assistant",
+              text: res.answer,
+              timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              sources: res.sources,
+              suggested_actions: res.suggested_actions,
+              model_provider: res.model_provider,
+            },
+          ];
+        });
+      } catch (err: any) {
+        toast.error(err.message || "Failed to reach Karmayogi AI Co-Pilot");
+        setMessages((prev) => [
+          ...prev.filter((m) => m.id !== assistantMessageId),
+          {
+            id: `error-${Date.now()}`,
+            sender: "assistant",
+            text: `⚠️ **Connection Notice**: Unable to contact the AI Co-Pilot service. Please verify your network connection or try again shortly.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+      }
     } finally {
       setLoading(false);
+      setStatusStage("");
     }
   };
 
@@ -161,8 +250,11 @@ export function CapabilityAssistant({
         <button
           id="karmayogi-copilot-trigger"
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-full bg-gradient-to-r from-[#123057] via-[#204e8a] to-[#087f76] px-5 py-3 text-white shadow-xl hover:shadow-2xl btn-interactive border border-white/20 group"
-          title="Open ShikshaSetu AI Assistant"
+          className={headerMode
+            ? "relative z-50 flex items-center gap-2 rounded-full border border-white/20 bg-gradient-to-r from-[#123057] via-[#204e8a] to-[#087f76] px-3.5 py-2 text-white shadow-md hover:shadow-lg btn-interactive group"
+            : "fixed !bottom-4 !right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2.5 rounded-full border border-white/20 bg-gradient-to-r from-[#123057] via-[#204e8a] to-[#087f76] px-5 py-3 text-white shadow-xl hover:shadow-2xl btn-interactive group sm:!bottom-6 sm:!right-6"}
+          style={headerMode ? undefined : { position: "fixed" }}
+          title={t("assistant.title")}
         >
           <div className="relative">
             <Sparkles size={18} className="text-[#ef7e37] animate-pulse" />
@@ -182,11 +274,8 @@ export function CapabilityAssistant({
       {isOpen && (
         <div
           id="karmayogi-copilot-modal"
-          className={`fixed z-50 flex flex-col bg-white shadow-2xl border border-slate-200 anim-scale-in transition-all duration-300 ${
-            isExpanded
-              ? "inset-4 sm:inset-10 rounded-3xl"
-              : "bottom-6 right-6 w-[95vw] sm:w-[460px] h-[640px] max-h-[88vh] rounded-3xl"
-          }`}
+          className="fixed left-1/2 top-20 z-50 flex h-[640px] max-h-[88vh] w-[95vw] -translate-x-1/2 flex-col rounded-3xl border border-slate-200 bg-white shadow-2xl anim-scale-in transition-all duration-300 sm:w-[460px]"
+          style={{ position: "fixed" }}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-[#123057] to-[#1e467d] p-4 text-white rounded-t-3xl">
@@ -197,9 +286,6 @@ export function CapabilityAssistant({
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-white tracking-tight">{t("assistant.title")}</h3>
-                  <span className="rounded-md bg-teal-500/20 px-2 py-0.5 text-[10px] font-semibold text-teal-300 border border-teal-400/30 tracking-wider">
-                    Grounded RAG
-                  </span>
                 </div>
                 <p className="text-[11px] text-slate-300">
                   {t("assistant.subtitle")}
@@ -209,14 +295,18 @@ export function CapabilityAssistant({
 
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="rounded-lg p-1.5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
-                title={isExpanded ? "Collapse" : "Expand"}
+                onClick={handleNewChat}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-semibold text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+                title="Start a new chat"
               >
-                {isExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                <RefreshCw size={14} />
+                <span>New chat</span>
               </button>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={() => {
+                  abortControllerRef.current?.abort();
+                  setIsOpen(false);
+                }}
                 className="rounded-lg p-1.5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
                 title="Close Assistant"
               >
@@ -230,9 +320,6 @@ export function CapabilityAssistant({
             <span className="flex items-center gap-1 font-semibold">
               <ShieldCheck size={13} className="text-[#087f76]" /> {t("assistant.activeView")}:{" "}
               <strong className="text-[#123057]">{currentPage}</strong>
-            </span>
-            <span className="text-[10px] text-slate-400 font-medium">
-              Zero Hallucination Grounding
             </span>
           </div>
 
@@ -329,9 +416,9 @@ export function CapabilityAssistant({
               </div>
             ))}
 
-            {loading && (
+            {loading && statusStage && (
               <div className="anim-fade-up">
-                <ThinkingIndicator label={t("assistant.thinking")} />
+                <ThinkingIndicator label={statusStage} />
               </div>
             )}
 

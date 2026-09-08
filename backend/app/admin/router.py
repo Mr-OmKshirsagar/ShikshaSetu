@@ -127,6 +127,41 @@ def get_reports(request: Request) -> schemas.AdminReportsResponse:
     return service.get_admin_reports(db)
 
 
+@router.get(
+    "/users/{user_id}/profile",
+    response_model=schemas.AdminWorkforceProfileResponse,
+    summary="Get individual workforce profile with learning progress, gaps, assessments and evidence",
+)
+def get_user_workforce_profile(
+    request: Request,
+    user_id: str,
+) -> schemas.AdminWorkforceProfileResponse:
+    """
+    Return a consolidated User 360 / Individual Workforce Profile for a single user.
+
+    Includes:
+    - User identity and resolved professional role
+    - Per-competency capability levels vs role requirements
+    - Active skill gaps sorted by priority
+    - All learning activities with explicit stored progress
+    - Learning summary (totals, overall learning progress)
+    - Formal capability assessment history
+    - Evidence ledger summary (supporting vs authoritative)
+    - Chronological learning/assessment timeline
+
+    Access: ADMIN only (enforced at router level via require_admin_role).
+    Data isolation: all data is scoped to the target user_id server-side.
+    Mutations: none — this endpoint is read-only.
+
+    Raises:
+        404: User not found
+        403: Caller is not ADMIN
+        401: Not authenticated
+    """
+    db = _get_db(request)
+    return service.get_user_workforce_profile(db, user_id)
+
+
 @router.post(
     "/users/{user_id}/promote-to-trainer",
     response_model=schemas.AdminUserItem,

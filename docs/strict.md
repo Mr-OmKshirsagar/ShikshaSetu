@@ -15,7 +15,6 @@ Your responsibility is to implement the **backend + AI layer for Round 1**.
 For Round 1:
 
 
-
 * Backend
 * Database
 * APIs

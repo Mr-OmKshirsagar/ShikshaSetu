@@ -33,6 +33,18 @@ class MockLLMProvider(LLMProvider):
         # Return a simple mock response
         return "This is a mock LLM response for testing purposes."
 
+    def generate_stream(
+        self,
+        prompt: str,
+        max_tokens: Optional[int] = None,
+        temperature: float = 0.7,
+    ):
+        """Generate mock streaming text chunks."""
+        text = self.generate(prompt, max_tokens, temperature)
+        words = text.split(" ")
+        for i, word in enumerate(words):
+            yield word + (" " if i < len(words) - 1 else "")
+
     def generate_json(
         self,
         prompt: str,

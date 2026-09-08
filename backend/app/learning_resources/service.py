@@ -1,6 +1,7 @@
 """Recommendation service - orchestrates candidate generation, scoring, and ranking."""
 
 from typing import List, Dict, Any, Optional, Tuple
+from datetime import datetime, UTC
 from pymongo.database import Database
 
 from app.skill_gaps import service as gaps_service
@@ -44,6 +45,7 @@ class RecommendationService:
         user_id: str,
         limit: Optional[int] = None,
         skip_unmapped: bool = True,
+        precomputed_gaps: Optional[List[Dict[str, Any]]] = None,
     ) -> RecommendationResponse:
         """
         Generate personalized learning recommendations for a user.
@@ -52,6 +54,7 @@ class RecommendationService:
             user_id: The user ID
             limit: Maximum number of recommendations to return (None = no limit)
             skip_unmapped: If True, only include resources with competency mappings
+            precomputed_gaps: Optional pre-calculated skill gaps list to avoid duplicate queries
 
         Returns:
             RecommendationResponse with ranked recommendations
@@ -82,8 +85,11 @@ class RecommendationService:
 
         gaps = []
         try:
-            gap_response = gaps_service.calculate_skill_gaps(self.db, user_id)
-            all_gaps = [gap.model_dump() if hasattr(gap, 'model_dump') else gap for gap in gap_response.gaps]
+            if precomputed_gaps is not None:
+                all_gaps = precomputed_gaps
+            else:
+                gap_response = gaps_service.calculate_skill_gaps(self.db, user_id)
+                all_gaps = [gap.model_dump() if hasattr(gap, 'model_dump') else gap for gap in gap_response.gaps]
             # Filter strictly for ACTIVE gaps (deficit > 0)
             gaps = [g for g in all_gaps if (g.get("gap") or 0.0) > 0.0 and g.get("gap_category") != "NO_GAP"]
         except Exception:
@@ -254,8 +260,8 @@ class RecommendationService:
                 ),
             },
             status=resource.get("status", "ACTIVE"),
-            created_at=resource.get("created_at"),
-            updated_at=resource.get("updated_at"),
+            created_at=resource.get("created_at") or datetime.now(UTC),
+            updated_at=resource.get("updated_at") or datetime.now(UTC),
         )
 
         # Build explanation

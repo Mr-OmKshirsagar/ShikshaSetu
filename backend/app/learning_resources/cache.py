@@ -45,3 +45,9 @@ def invalidate_recommendations_cache(user_id: Optional[str] = None) -> None:
     keys_to_del = [k for k in _RECOMMENDATION_CACHE if k.startswith(f"{uid_str}:") or k == uid_str]
     for k in keys_to_del:
         _RECOMMENDATION_CACHE.pop(k, None)
+
+    try:
+        from app.assistant.cache import invalidate_copilot_cache
+        invalidate_copilot_cache(user_id)
+    except Exception:
+        pass

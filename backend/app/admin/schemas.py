@@ -195,6 +195,62 @@ class AdminUserListResponse(BaseModel):
     users: List[AdminUserItem]
 
 
+class AdminCapabilityItem(BaseModel):
+    competency_code: str
+    competency_name: str
+    domain: str
+    current_level: Optional[float] = None
+    required_level: float
+    gap: float
+    gap_category: str
+
+
+class AdminLearningActivityItem(BaseModel):
+    activity_id: str
+    resource_id: str
+    resource_title: Optional[str] = None
+    provider: Optional[str] = None
+    competency_id: str
+    status: str
+    progress_percent: float
+    started_at: Optional[datetime] = None
+    last_accessed_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    duration_minutes: float = 0
+
+
+class AdminAssessmentItem(BaseModel):
+    assessment_id: str
+    assessment_type: str
+    competency_code: Optional[str] = None
+    status: Optional[str] = None
+    score: Optional[float] = None
+    percentage: Optional[float] = None
+    assessed_at: Optional[datetime] = None
+    authoritative: bool = False
+
+
+class AdminEvidenceItem(BaseModel):
+    evidence_id: str
+    evidence_type: str
+    competency_code: Optional[str] = None
+    confidence: Optional[float] = None
+    source: Optional[str] = None
+    recorded_at: Optional[datetime] = None
+
+
+class AdminWorkforceProfileResponse(BaseModel):
+    user: AdminUserItem
+    capabilities: List[AdminCapabilityItem] = Field(default_factory=list)
+    active_gaps: List[AdminCapabilityItem] = Field(default_factory=list)
+    learning_summary: Dict[str, Any]
+    learning_activities: List[AdminLearningActivityItem] = Field(default_factory=list)
+    assessments: List[AdminAssessmentItem] = Field(default_factory=list)
+    evidence_summary: Dict[str, Any]
+    evidence: List[AdminEvidenceItem] = Field(default_factory=list)
+    timeline: List[Dict[str, Any]] = Field(default_factory=list)
+
+
 # ─── Reports ─────────────────────────────────────────────────────────────────
 
 class AdminReportsResponse(BaseModel):

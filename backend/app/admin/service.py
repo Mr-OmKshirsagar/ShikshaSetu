@@ -749,3 +749,303 @@ def assign_user_role(db: Database, user_id: str, payload: schemas.AdminAssignRol
         created_at=updated_user.get("created_at") or now,
         last_login_at=updated_user.get("last_login_at"),
     )
+
+
+def get_user_workforce_profile(
+    db: Database, user_id: str
+) -> schemas.AdminWorkforceProfileResponse:
+    """
+    Build a consolidated individual workforce profile for Admin observability.
+
+    Assembles:
+    - User identity and professional role
+    - Per-competency capability levels vs role requirements (authoritative profiles)
+    - Active skill gaps sorted by priority
+    - Learning activities with progress (stored explicitly, not derived)
+    - Learning summary metrics (totals, overall progress)
+    - Capability assessment history
+    - Evidence summary (supporting vs authoritative — kept strictly separate)
+    - Chronological timeline of learning/assessment events
+
+    RBAC: caller must already be verified as ADMIN before calling this function.
+    Data isolation: all queries are scoped to the target user_id.
+    Mutation: this function is read-only. No writes to any collection.
+    """
+    # ── 1. Resolve user ──────────────────────────────────────────────────────
+    user_doc = repository.get_user_by_id(db, user_id)
+    if user_doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User {user_id} not found",
+        )
+
+    roles = repository.get_all_roles(db)
+    role_map = {str(r["_id"]): r for r in roles}
+    competencies = repository.get_all_competencies(db)
+    comp_map = {str(c["_id"]): c for c in competencies}
+    # also index by code for assessment lookups
+    comp_code_map = {c.get("code", ""): c for c in competencies}
+
+    prof_role_doc = role_map.get(str(user_doc.get("role_id"))) if user_doc.get("role_id") else None
+    prof_role_name = prof_role_doc.get("role_name", "Unresolved") if prof_role_doc else "Unresolved"
+
+    user_item = schemas.AdminUserItem(
+        id=str(user_doc["_id"]),
+        email=user_doc.get("email", ""),
+        full_name=user_doc.get("full_name", "User"),
+        employee_id=user_doc.get("employee_id") or f"EMP-{str(user_doc['_id'])[:6].upper()}",
+        department=user_doc.get("department") or "General Administration",
+        designation=user_doc.get("designation") or "Officer",
+        access_role=user_doc.get("access_role", "OFFICIAL"),
+        professional_role=prof_role_name,
+        status=user_doc.get("status", "active"),
+        created_at=user_doc.get("created_at") or datetime.now(UTC),
+        last_login_at=user_doc.get("last_login_at"),
+    )
+
+    # ── 2. Competency profiles + role requirements → capability + gaps ────────
+    profiles = repository.get_user_competency_profiles(db, user_id)
+    profile_by_comp = {}
+    for p in profiles:
+        # competency_id can be stored as ObjectId or string
+        cid = str(p.get("competency_id"))
+        profile_by_comp[cid] = p
+
+    requirements = repository.get_all_role_requirements(db)
+    role_id_str = str(user_doc.get("role_id")) if user_doc.get("role_id") else None
+    user_requirements = [r for r in requirements if str(r.get("role_id")) == role_id_str] if role_id_str else []
+
+    capabilities: list[schemas.AdminCapabilityItem] = []
+    active_gaps: list[schemas.AdminCapabilityItem] = []
+
+    for req in user_requirements:
+        c_id = str(req.get("competency_id"))
+        c_doc = comp_map.get(c_id)
+        if not c_doc:
+            continue
+        req_lvl = _safe_float(req.get("required_level", 4.0))
+        profile = profile_by_comp.get(c_id)
+        cur_lvl = _safe_float(profile.get("current_level")) if profile and profile.get("current_level") is not None else None
+        gap = max(0.0, req_lvl - cur_lvl) if cur_lvl is not None else req_lvl
+        gap_cat = (
+            "CRITICAL" if gap >= 2.0
+            else "HIGH" if gap >= 1.0
+            else "MEDIUM" if gap > 0.0
+            else "MET"
+        )
+        item = schemas.AdminCapabilityItem(
+            competency_code=c_doc.get("code", c_id),
+            competency_name=c_doc.get("name", "Competency"),
+            domain=c_doc.get("domain", "CORE"),
+            current_level=cur_lvl,
+            required_level=req_lvl,
+            gap=round(gap, 2),
+            gap_category=gap_cat,
+        )
+        capabilities.append(item)
+        if gap > 0.0:
+            active_gaps.append(item)
+
+    # sort active gaps: CRITICAL first
+    priority_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "MET": 4}
+    active_gaps.sort(key=lambda x: priority_order.get(x.gap_category, 9))
+
+    # ── 3. Learning activities ────────────────────────────────────────────────
+    resources = repository.get_all_learning_resources(db)
+    res_map = {r.get("resource_id") or str(r["_id"]): r for r in resources}
+    # Also index by _id string for fallback
+    res_id_map = {str(r["_id"]): r for r in resources}
+
+    activity_docs = repository.get_user_learning_activities(db, user_id)
+    learning_items: list[schemas.AdminLearningActivityItem] = []
+
+    for act in activity_docs:
+        res_id = act.get("resource_id", "")
+        res_doc = res_map.get(res_id) or res_id_map.get(res_id) or {}
+        res_title = res_doc.get("title") or res_doc.get("name") or res_id or "Learning Resource"
+        provider = res_doc.get("provider") or res_doc.get("source") or None
+        comp_id_str = str(act.get("competency_id", ""))
+
+        learning_items.append(schemas.AdminLearningActivityItem(
+            activity_id=str(act["_id"]),
+            resource_id=res_id,
+            resource_title=res_title,
+            provider=provider,
+            competency_id=comp_id_str,
+            status=act.get("status", "not_started"),
+            progress_percent=_safe_float(act.get("progress_percent", 0)),
+            started_at=act.get("started_at"),
+            last_accessed_at=act.get("last_accessed_at"),
+            completed_at=act.get("completed_at"),
+            duration_minutes=_safe_float(act.get("duration_minutes", 0)),
+        ))
+
+    # ── 4. Learning summary ───────────────────────────────────────────────────
+    total_acts = len(learning_items)
+    completed_acts = sum(1 for a in learning_items if a.status == "completed")
+    in_progress_acts = sum(1 for a in learning_items if a.status == "in_progress")
+    not_started_acts = sum(1 for a in learning_items if a.status == "not_started")
+    abandoned_acts = sum(1 for a in learning_items if a.status == "abandoned")
+    total_minutes = sum(a.duration_minutes for a in learning_items)
+
+    # Overall learning progress: mean of stored progress_percent values.
+    # Labeled "Learning Progress" — NOT "Competency Progress".
+    # Only calculated when there are activities; null otherwise.
+    if total_acts > 0:
+        overall_progress = round(
+            sum(a.progress_percent for a in learning_items) / total_acts, 1
+        )
+    else:
+        overall_progress = None
+
+    learning_summary: dict[str, Any] = {
+        "total_activities": total_acts,
+        "completed": completed_acts,
+        "in_progress": in_progress_acts,
+        "not_started": not_started_acts,
+        "abandoned": abandoned_acts,
+        "total_learning_hours": round(total_minutes / 60.0, 1),
+        # Explicit label: this is LEARNING progress, not competency progress
+        "overall_learning_progress_pct": overall_progress,
+        "progress_note": (
+            "Learning progress reflects learner-reported engagement. "
+            "Competency updates require formal assessment evidence."
+        ),
+    }
+
+    # ── 5. Assessments ────────────────────────────────────────────────────────
+    assessment_docs = repository.get_user_capability_assessments(db, user_id)
+    assessment_items: list[schemas.AdminAssessmentItem] = []
+
+    for ass in assessment_docs:
+        ass_status = ass.get("status", "")
+        is_submitted = ass_status in ("SUBMITTED", "submitted", "COMPLETED", "completed")
+        assessment_items.append(schemas.AdminAssessmentItem(
+            assessment_id=str(ass["_id"]),
+            assessment_type="FORMAL_CAPABILITY",
+            competency_code=ass.get("competency_code"),
+            status=ass_status,
+            score=_safe_float(ass["score"]) if ass.get("score") is not None else None,
+            percentage=_safe_float(ass["percentage"]) if ass.get("percentage") is not None else None,
+            assessed_at=ass.get("submitted_at") or ass.get("started_at"),
+            # Authoritative only when formally submitted
+            authoritative=is_submitted,
+        ))
+
+    # ── 6. Evidence ───────────────────────────────────────────────────────────
+    evidence_docs = repository.get_user_evidence_records(db, user_id)
+    evidence_items: list[schemas.AdminEvidenceItem] = []
+
+    supporting_count = 0
+    authoritative_count = 0
+
+    for ev in evidence_docs:
+        ev_type = ev.get("type") or ev.get("evidence_type") or "LEARNING_ACTIVITY"
+        is_auth = ev_type in ("CAPABILITY_ASSESSMENT", "ADAPTIVE_ASSESSMENT")
+        if is_auth:
+            authoritative_count += 1
+        else:
+            supporting_count += 1
+
+        c_id = str(ev.get("competency_id", ""))
+        c_doc = comp_map.get(c_id) or comp_code_map.get(c_id)
+        comp_code = c_doc.get("code") if c_doc else c_id or None
+
+        evidence_items.append(schemas.AdminEvidenceItem(
+            evidence_id=str(ev["_id"]),
+            evidence_type=ev_type,
+            competency_code=comp_code,
+            confidence=_safe_float(ev.get("confidence", 0.3)) if ev.get("confidence") is not None else None,
+            source=ev.get("source", {}).get("resource_id") if isinstance(ev.get("source"), dict) else str(ev.get("source", "")),
+            recorded_at=ev.get("recorded_at"),
+        ))
+
+    evidence_summary: dict[str, Any] = {
+        "supporting_count": supporting_count,
+        "supporting_confidence": 0.30,
+        "authoritative_count": authoritative_count,
+        "authoritative_confidence": 0.85,
+        "total_records": len(evidence_items),
+        "governance_note": (
+            "Supporting evidence (confidence 0.30) is generated by learning completion. "
+            "Authoritative evidence (confidence 0.85) is generated exclusively by formal "
+            "capability assessments and directly updates the competency profile."
+        ),
+    }
+
+    # ── 7. Timeline ───────────────────────────────────────────────────────────
+    timeline: list[dict[str, Any]] = []
+
+    for act in activity_docs:
+        res_id = act.get("resource_id", "Resource")
+        res_doc = res_map.get(res_id) or res_id_map.get(res_id) or {}
+        res_label = res_doc.get("title") or res_id
+
+        if act.get("started_at"):
+            timeline.append({
+                "timestamp": act["started_at"],
+                "event_type": "LEARNING_STARTED",
+                "title": f"Learning started: {res_label}",
+                "detail": f"Status: in_progress",
+                "icon": "book",
+            })
+        if act.get("completed_at"):
+            timeline.append({
+                "timestamp": act["completed_at"],
+                "event_type": "LEARNING_COMPLETED",
+                "title": f"Learning completed: {res_label}",
+                "detail": f"Progress: {act.get('progress_percent', 0):.0f}%",
+                "icon": "check",
+            })
+            timeline.append({
+                "timestamp": act["completed_at"],
+                "event_type": "SUPPORTING_EVIDENCE",
+                "title": "Supporting evidence recorded",
+                "detail": "Confidence: 0.30 — supporting only, does not update competency",
+                "icon": "evidence",
+            })
+
+    for ass in assessment_docs:
+        if ass.get("started_at"):
+            timeline.append({
+                "timestamp": ass["started_at"],
+                "event_type": "ASSESSMENT_STARTED",
+                "title": f"Formal assessment started: {ass.get('competency_code', 'Competency')}",
+                "detail": "Capability assessment in progress",
+                "icon": "assessment",
+            })
+        if ass.get("submitted_at"):
+            score_label = f"Score: {ass.get('percentage', 0):.1f}%" if ass.get("percentage") is not None else ""
+            timeline.append({
+                "timestamp": ass["submitted_at"],
+                "event_type": "ASSESSMENT_SUBMITTED",
+                "title": f"Assessment submitted: {ass.get('competency_code', 'Competency')}",
+                "detail": score_label,
+                "icon": "assessment",
+            })
+            timeline.append({
+                "timestamp": ass["submitted_at"],
+                "event_type": "AUTHORITATIVE_EVIDENCE",
+                "title": "Authoritative evidence recorded",
+                "detail": "Confidence: 0.85 — competency profile updated",
+                "icon": "shield",
+            })
+
+    # Sort timeline chronologically ascending
+    timeline.sort(
+        key=lambda e: (e["timestamp"] or datetime.min.replace(tzinfo=UTC)).isoformat()
+        if hasattr(e["timestamp"], "isoformat")
+        else str(e["timestamp"] or ""),
+    )
+
+    return schemas.AdminWorkforceProfileResponse(
+        user=user_item,
+        capabilities=capabilities,
+        active_gaps=active_gaps,
+        learning_summary=learning_summary,
+        learning_activities=learning_items,
+        assessments=assessment_items,
+        evidence_summary=evidence_summary,
+        evidence=evidence_items,
+        timeline=timeline,
+    )

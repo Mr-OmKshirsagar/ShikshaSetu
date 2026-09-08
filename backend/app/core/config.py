@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     embedding_api_key: str = Field(default="", validation_alias="EMBEDDING_API_KEY")
     rag_top_k_keyword: int = Field(default=15, validation_alias="RAG_TOP_K_KEYWORD")
     rag_top_k_vector: int = Field(default=15, validation_alias="RAG_TOP_K_VECTOR")
+    rag_chat_vector_enabled: bool = Field(default=False, validation_alias="RAG_CHAT_VECTOR_ENABLED")
     rag_rerank_top_k: int = Field(default=6, validation_alias="RAG_RERANK_TOP_K")
     rag_groundedness_threshold: float = Field(default=0.25, validation_alias="RAG_GROUNDEDNESS_THRESHOLD")
     rag_enable_query_rewrite: bool = Field(default=False, validation_alias="RAG_ENABLE_QUERY_REWRITE")

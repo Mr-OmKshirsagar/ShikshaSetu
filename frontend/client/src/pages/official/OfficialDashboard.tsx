@@ -148,17 +148,17 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 md:ml-auto md:flex-nowrap md:justify-end">
             <button
               onClick={() => onNavigate("Assessments")}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#ef7e37] px-5 py-3 text-sm font-bold text-white shadow-md hover:bg-[#d96a27] btn-interactive"
+              className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl bg-[#ef7e37] px-5 py-3 text-sm font-bold text-white shadow-md hover:bg-[#d96a27] btn-interactive"
             >
               <ClipboardCheck size={16} />
               Take Assessment
             </button>
             <button
               onClick={() => onNavigate("Recommendations")}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 px-5 py-3 text-sm font-bold text-white hover:bg-white/20 btn-interactive"
+              className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-md hover:bg-white/20 btn-interactive"
             >
               <BookOpen size={16} />
               View Recommendations

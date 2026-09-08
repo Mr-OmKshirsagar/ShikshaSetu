@@ -6,17 +6,26 @@ from bson import ObjectId
 
 from app.skill_gaps.service import calculate_skill_gaps
 from app.learning_resources.service import RecommendationService
+from app.learning_resources.cache import get_cached_recommendations, set_cached_recommendations
+from app.assistant.cache import get_cached_copilot_context, set_cached_copilot_context
 
 
 def build_user_capability_context(
     database: Database,
     user_id: str,
     active_competency_code: Optional[str] = None,
+    include_recommendations: bool = True,
+    use_cache: bool = True,
 ) -> Dict[str, Any]:
     """
     Constructs a scoped, privacy-isolated capability summary for the LLM.
     Does NOT dump the whole database; only extracts the requesting official's state.
     """
+    if use_cache:
+        cached_ctx = get_cached_copilot_context(user_id, active_competency_code, include_recommendations)
+        if cached_ctx is not None:
+            return cached_ctx
+
     user_oid = ObjectId(user_id) if ObjectId.is_valid(user_id) else None
     if not user_oid:
         return {}
@@ -42,12 +51,14 @@ def build_user_capability_context(
 
     # 2. Skill Gaps Calculation
     gaps_list = []
+    raw_gaps_dicts = []
     top_gaps = []
     try:
         gap_response = calculate_skill_gaps(database, user_id)
         raw_gaps = gap_response.gaps or []
         for g in raw_gaps:
             g_dict = g.model_dump() if hasattr(g, "model_dump") else g
+            raw_gaps_dicts.append(g_dict)
             gaps_list.append({
                 "competency_code": g_dict.get("competency_code"),
                 "competency_name": g_dict.get("competency_name"),
@@ -64,29 +75,39 @@ def build_user_capability_context(
 
     # 3. Top Recommendations
     recs_list = []
-    try:
-        rec_service = RecommendationService(database)
-        rec_resp = rec_service.get_recommendations_for_user(user_id, limit=5)
-        for r in rec_resp.recommendations:
-            res = r.resource
-            recs_list.append({
-                "resource_id": res.resource_id,
-                "title": res.title,
-                "provider": r.provider,
-                "competency_code": r.competency_code,
-                "gap": r.gap,
-                "score": round(r.score, 2),
-                "url": res.provider_specific.course_url or res.source.source_url,
-                "source_doc": res.source.source_document,
-            })
-    except Exception:
-        pass
+    if include_recommendations:
+        try:
+            cached_recs = get_cached_recommendations(user_id, limit=5)
+            if cached_recs is not None:
+                rec_resp = cached_recs
+            else:
+                rec_service = RecommendationService(database)
+                rec_resp = rec_service.get_recommendations_for_user(user_id, limit=5, precomputed_gaps=raw_gaps_dicts)
+                set_cached_recommendations(user_id, rec_resp, limit=5)
+
+            for r in getattr(rec_resp, "recommendations", []):
+                res = r.resource
+                recs_list.append({
+                    "resource_id": res.resource_id,
+                    "title": res.title,
+                    "provider": r.provider,
+                    "competency_code": r.competency_code,
+                    "gap": r.gap,
+                    "score": round(r.score, 2),
+                    "url": getattr(res.provider_specific, "course_url", None) or getattr(res.source, "source_url", None),
+                    "source_doc": getattr(res.source, "source_document", None),
+                })
+        except Exception:
+            pass
 
     # 4. Learning Activity & Evidence Summary
     active_learning = []
     completed_learning = []
     try:
-        activities = list(database.learning_activities.find({"user_id": user_oid}))
+        activities = list(database.learning_activities.find(
+            {"user_id": user_oid},
+            {"resource_id": 1, "status": 1, "progress_percent": 1}
+        ))
         for a in activities:
             item = {
                 "resource_id": a.get("resource_id"),
@@ -104,16 +125,20 @@ def build_user_capability_context(
     supporting_count = 0
     authoritative_count = 0
     try:
-        evidence_docs = list(database.competency_evidence.find({"user_id": user_oid}))
+        evidence_docs = list(database.competency_evidence.find(
+            {"user_id": user_oid},
+            {"type": 1, "evidence_type": 1}
+        ))
         for ev in evidence_docs:
-            if ev.get("type") in ("LEARNING_ACTIVITY", "AI_QUIZ"):
+            ev_type = ev.get("type") or ev.get("evidence_type")
+            if ev_type in ("LEARNING_ACTIVITY", "AI_QUIZ"):
                 supporting_count += 1
-            elif ev.get("type") == "CAPABILITY_ASSESSMENT":
+            elif ev_type == "CAPABILITY_ASSESSMENT":
                 authoritative_count += 1
     except Exception:
         pass
 
-    return {
+    result = {
         "profile": profile_summary,
         "top_gaps": top_gaps,
         "total_gaps_count": len(gaps_list),
@@ -124,3 +149,6 @@ def build_user_capability_context(
         "authoritative_evidence_count": authoritative_count,
         "active_competency_code": active_competency_code,
     }
+    if use_cache:
+        set_cached_copilot_context(user_id, result, active_competency_code, include_recommendations)
+    return result

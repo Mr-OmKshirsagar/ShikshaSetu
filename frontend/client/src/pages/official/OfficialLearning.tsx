@@ -113,17 +113,35 @@ export function OfficialLearning({
         }}
       />
 
-      {/* Top Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#123057]">My Learning Workspace</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Track module completions, record supporting evidence, and prepare for capability validation.
-          </p>
-        </div>
+      {/* Workspace Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#123057] via-[#1b4778] to-[#087f76] p-6 text-white shadow-[0_14px_36px_rgba(18,48,87,.14)] sm:p-8 anim-fade-up">
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[.14em] text-[#a9f1e6]">
+              <BookMarked size={13} /> Personal learning workspace
+            </div>
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">My Learning</h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-blue-100">
+              Turn focused learning into supporting evidence, then validate your growth through assessment.
+            </p>
+          </div>
 
-        {/* Tab Toggle */}
-        <div className="flex items-center gap-1 rounded-2xl border border-[#dfe7f0] bg-white p-1.5 shadow-sm">
+          <div className="flex items-center gap-5 text-xs text-blue-100">
+            <div><div className="text-2xl font-extrabold text-white">{activeActivities.length}</div><div>Active</div></div>
+            <div className="h-8 w-px bg-white/20" />
+            <div><div className="text-2xl font-extrabold text-[#a9f1e6]">{completedActivities.length}</div><div>Completed</div></div>
+          </div>
+        </div>
+        <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full border border-white/10" />
+      </div>
+
+      {/* Activity tabs */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">Your learning queue</div>
+          <p className="mt-1 text-xs text-slate-500">Pick up where you left off or review completed evidence.</p>
+        </div>
+        <div className="flex w-fit items-center gap-1 rounded-2xl border border-[#dfe7f0] bg-white p-1.5 shadow-sm">
           <button
             onClick={() => setActiveTab("ACTIVE")}
             className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all btn-interactive ${
@@ -148,11 +166,13 @@ export function OfficialLearning({
       </div>
 
       {/* Evidence & Ecosystem Note */}
-      <div className="flex items-start gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4 text-xs text-amber-900 anim-fade-up stagger-1">
-        <Award size={18} className="text-amber-600 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-3 rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-white p-4 text-xs text-amber-900 shadow-sm anim-fade-up stagger-1">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+          <Award size={17} />
+        </div>
         <div className="space-y-0.5">
-          <div className="font-semibold text-[#123057] flex items-center gap-2">
-            <span>Learning ≠ Proven Competency Governance Architecture</span>
+          <div className="flex flex-wrap items-center gap-2 font-semibold text-[#123057]">
+            <span>Learning builds evidence, assessment validates capability</span>
             <span className="rounded-md bg-amber-200/80 px-2 py-0.5 text-[10px] font-semibold text-amber-800 anim-badge-pop">
               Supporting Evidence (0.30)
             </span>

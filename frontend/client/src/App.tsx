@@ -101,10 +101,6 @@ const OfficialProgress = lazy(() =>
 const OfficialProfile = lazy(() =>
   import("./pages/official/OfficialProfile").then((m) => ({ default: m.OfficialProfile }))
 );
-const CapabilityAssistant = lazy(() =>
-  import("./components/assistant/CapabilityAssistant").then((m) => ({ default: m.CapabilityAssistant }))
-);
-
 // ─── Loading screen ───────────────────────────────────────────────────────────
 
 function LoadingScreen() {
@@ -284,9 +280,6 @@ function OfficialApp() {
     <OfficialLayout activePage={activePage} onNavigate={handleNavigate}>
       <Suspense fallback={<PageSkeleton />}>
         {renderPage()}
-      </Suspense>
-      <Suspense fallback={null}>
-        <CapabilityAssistant currentPage={activePage} onNavigate={handleNavigate} />
       </Suspense>
     </OfficialLayout>
   );

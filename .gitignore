@@ -17,3 +17,5 @@ backend/uploads/materials/*.docx
 backend/uploads/materials/*.pptx
 backend/uploads/materials/*.txt
 *.log
+*.zip
+frontend.zip

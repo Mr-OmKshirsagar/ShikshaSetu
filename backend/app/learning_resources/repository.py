@@ -48,19 +48,30 @@ class LearningResourceRepository:
     def get_resources_by_competency_and_provider(
         self, competency_code: str, provider: str
     ) -> List[Dict[str, Any]]:
-        """Get resources for a competency from a specific provider."""
+        """Get resources for a competency from a specific provider in a single batched query."""
         mappings = list(
             self.mappings.find(
                 {"competency_code": competency_code, "provider": provider}
             )
         )
+        if not mappings:
+            return []
 
-        resources = []
-        for mapping in mappings:
-            resource = self.get_resource_by_mongo_id(str(mapping["resource_id"]))
-            if resource and resource.get("provider") == provider:
-                resources.append(resource)
+        # Batch fetch all resources in ONE query instead of N individual roundtrips
+        raw_ids = [m["resource_id"] for m in mappings if "resource_id" in m]
+        query_ids = []
+        for rid in raw_ids:
+            if isinstance(rid, ObjectId):
+                query_ids.append(rid)
+            elif ObjectId.is_valid(str(rid)):
+                query_ids.append(ObjectId(str(rid)))
+            query_ids.append(str(rid))
 
+        resources = list(
+            self.resources.find(
+                {"_id": {"$in": query_ids}, "provider": provider}
+            )
+        )
         return resources
 
     def get_competency_by_code(self, code: str) -> Optional[Dict[str, Any]]:

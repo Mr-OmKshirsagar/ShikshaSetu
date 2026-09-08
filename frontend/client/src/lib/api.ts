@@ -717,6 +717,85 @@ export type AdminUserListResponse = {
   users: AdminUserItem[];
 };
 
+// Individual workforce profile (GET /admin/users/{user_id}/profile)
+export type AdminWorkforceProfileResponse = {
+  user: AdminUserItem;
+  capabilities: {
+    competency_code: string;
+    competency_name: string;
+    domain: string;
+    current_level: number | null;
+    required_level: number;
+    gap: number;
+    gap_category: string;
+  }[];
+  active_gaps: {
+    competency_code: string;
+    competency_name: string;
+    domain: string;
+    current_level: number | null;
+    required_level: number;
+    gap: number;
+    gap_category: string;
+  }[];
+  learning_summary: {
+    total_activities: number;
+    completed: number;
+    in_progress: number;
+    not_started: number;
+    abandoned: number;
+    total_learning_hours: number;
+    overall_learning_progress_pct: number | null;
+    progress_note: string;
+  };
+  learning_activities: {
+    activity_id: string;
+    resource_id: string;
+    resource_title: string | null;
+    provider: string | null;
+    competency_id: string;
+    status: string;
+    progress_percent: number;
+    started_at: string | null;
+    last_accessed_at: string | null;
+    completed_at: string | null;
+    duration_minutes: number;
+  }[];
+  assessments: {
+    assessment_id: string;
+    assessment_type: string;
+    competency_code: string | null;
+    status: string | null;
+    score: number | null;
+    percentage: number | null;
+    assessed_at: string | null;
+    authoritative: boolean;
+  }[];
+  evidence_summary: {
+    supporting_count: number;
+    supporting_confidence: number;
+    authoritative_count: number;
+    authoritative_confidence: number;
+    total_records: number;
+    governance_note: string;
+  };
+  evidence: {
+    evidence_id: string;
+    evidence_type: string;
+    competency_code: string | null;
+    confidence: number | null;
+    source: string | null;
+    recorded_at: string | null;
+  }[];
+  timeline: {
+    timestamp: string | null;
+    event_type: string;
+    title: string;
+    detail: string;
+    icon: string;
+  }[];
+};
+
 export type AdminReportsResponse = {
   generated_at: string;
   workforce_summary: Record<string, any>;
@@ -792,6 +871,11 @@ export type AssistantChatPayload = {
   current_competency_code?: string;
   current_resource_id?: string;
 };
+
+export type AssistantStreamEvent =
+  | { type: "status"; stage: string; message: string }
+  | { type: "delta"; delta: string }
+  | { type: "done"; response: AssistantChatResponse };
 
 // ─── Adaptive Capability Assessment Types ────────────────────────────────────
 
@@ -1245,6 +1329,8 @@ export const api = {
     capacityPlanning: () => request<CapacityPlanningResponse>("/admin/capacity-planning"),
     users: (department?: string) =>
       request<AdminUserListResponse>(`/admin/users${department ? `?department=${encodeURIComponent(department)}` : ""}`),
+    userProfile: (userId: string) =>
+      request<AdminWorkforceProfileResponse>(`/admin/users/${encodeURIComponent(userId)}/profile`, {}, { skipCache: true }),
     reports: () => request<AdminReportsResponse>("/admin/reports"),
   },
 
@@ -1270,6 +1356,78 @@ export const api = {
         method: "POST",
         body: JSON.stringify(payload),
       }),
+    stream: async (
+      payload: AssistantChatPayload,
+      onEvent: (event: AssistantStreamEvent) => void,
+      signal?: AbortSignal
+    ): Promise<AssistantChatResponse | null> => {
+      const token = localStorage.getItem("shikshasetu_token");
+      const response = await fetch(`${API_BASE}/assistant/chat/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+        signal,
+      });
+
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new ApiError(response.status, errBody.detail || "Streaming request failed");
+      }
+
+      if (!response.body) {
+        throw new ApiError(500, "ReadableStream not supported");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResponse: AssistantChatResponse | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+
+        for (const part of parts) {
+          const trimmed = part.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const jsonStr = trimmed.slice(6).trim();
+          if (!jsonStr) continue;
+          try {
+            const parsed = JSON.parse(jsonStr) as AssistantStreamEvent;
+            onEvent(parsed);
+            if (parsed.type === "done") {
+              finalResponse = parsed.response;
+            }
+          } catch (err) {
+            console.warn("Failed to parse SSE payload", jsonStr, err);
+          }
+        }
+      }
+
+      if (buffer.trim()) {
+        const trimmed = buffer.trim();
+        if (trimmed.startsWith("data: ")) {
+          try {
+            const parsed = JSON.parse(trimmed.slice(6).trim()) as AssistantStreamEvent;
+            onEvent(parsed);
+            if (parsed.type === "done") {
+              finalResponse = parsed.response;
+            }
+          } catch (err) {
+            // ignore
+          }
+        }
+      }
+
+      return finalResponse;
+    },
   },
 
   // ─── Adaptive Capability Assessments namespace ──────────────────────────────
