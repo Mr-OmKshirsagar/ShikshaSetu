@@ -126,10 +126,18 @@ def get_my_evidence(
             val = 3.0
             normalized_level = 3.0
 
+        raw_source = doc.get("source") or doc.get("assessment_type")
+        if isinstance(raw_source, dict):
+            source_str = raw_source.get("resource_name") or raw_source.get("resource_id") or "Learning Module"
+        elif raw_source:
+            source_str = str(raw_source)
+        else:
+            source_str = "Standardized Assessment" if is_authoritative else "Learning Module"
+
         results.append({
             "id": str(doc.get("_id", ObjectId())),
             "type": "AUTHORITATIVE" if is_authoritative else "SUPPORTING",
-            "source": doc.get("source", doc.get("assessment_type", "Standardized Assessment" if is_authoritative else "Learning Module")),
+            "source": source_str,
             "title": doc.get("title", f"Competency Verification: {comp_name}"),
             "competency_code": comp_code,
             "competency_name": comp_name,
@@ -181,5 +189,12 @@ def get_my_evidence(
             })
         return starter_records
 
-    results.sort(key=lambda x: x.get("date") if isinstance(x.get("date"), datetime) else datetime.min.replace(tzinfo=UTC), reverse=True)
+    def _extract_ts(item: dict) -> float:
+        d = item.get("date")
+        if isinstance(d, datetime):
+            return d.timestamp()
+        return 0.0
+
+    results.sort(key=_extract_ts, reverse=True)
     return results
+
