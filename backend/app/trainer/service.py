@@ -1,4 +1,5 @@
 """Business logic service for Trainer Assessment Studio."""
+import logging
 from datetime import UTC, datetime
 from typing import Any, Optional
 from bson import ObjectId
@@ -11,6 +12,10 @@ from app.trainer.models import (
     TrainerQuiz,
 )
 from app.trainer.repository import TrainerRepository
+from app.core.email import get_email_service
+from app.users.repository import get_user_by_id
+
+logger = logging.getLogger(__name__)
 
 
 class TrainerServiceError(Exception):
@@ -345,11 +350,47 @@ class TrainerService:
             learner_ids=learner_ids,
         )
 
+        # Send email notifications to assigned learners
+        email_service = get_email_service()
+        trainer = get_user_by_id(self.database, trainer_id)
+        # Use full_name field (or fallback to name) for trainer identification
+        trainer_name = trainer.get("full_name") or trainer.get("name", "Your Trainer") if trainer else "Your Trainer"
+        
+        quiz_title = quiz.get("title", "Untitled Quiz")
+        quiz_description = quiz.get("description", "No description provided")
+        competency_code = quiz.get("competency_code", "")
+        question_count = len(quiz.get("questions", []))
+        quiz_id_str = str(quiz["_id"])
+        assigned_at = datetime.now(UTC).isoformat()
+        
+        emails_sent = 0
+        for learner_id in learner_ids:
+            learner = get_user_by_id(self.database, learner_id)
+            if learner and learner.get("email"):
+                try:
+                    success = email_service.send_quiz_assignment_notification(
+                        learner_email=learner["email"],
+                        learner_name=learner.get("full_name") or learner.get("name", "Learner"),
+                        quiz_title=quiz_title,
+                        quiz_description=quiz_description,
+                        trainer_name=trainer_name,
+                        competency_code=competency_code,
+                        question_count=question_count,
+                        quiz_id=quiz_id_str,
+                        assigned_at=assigned_at,
+                    )
+                    if success:
+                        emails_sent += 1
+                except Exception as e:
+                    logger.error(f"Failed to send email to {learner['email']}: {e}")
+
+        logger.info(f"Quiz {quiz_id} assigned to {assigned_count} learners. Emails sent: {emails_sent}/{len(learner_ids)}")
+
         return {
             "quiz_id": str(quiz["_id"]),
             "assigned_learners_count": assigned_count,
             "status": TrainerQuizStatus.ASSIGNED.value,
-            "message": f"Quiz successfully assigned to {len(learner_ids)} learner(s)",
+            "message": f"Quiz successfully assigned to {len(learner_ids)} learner(s). Email notifications sent: {emails_sent}",
         }
 
     def list_quizzes(self, trainer_id: str) -> list[dict]:
