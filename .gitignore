@@ -76,3 +76,9 @@ frontend.zip
 frontend/client/public/__manus__/
 frontend/.manus-logs/
 .webdev/
+
+# Markdown Files
+after_decluttering.md
+before_decluttering.md
+clutter_files.md
+declutter.md
