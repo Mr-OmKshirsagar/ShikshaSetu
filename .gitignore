@@ -1,21 +1,84 @@
+# ==============================================================================
+# ShikshaSetu Unified .gitignore
+# ==============================================================================
+
+# Environment variables
 .env
 .env.*
 !.env.example
+
+# Python virtual environments & runtimes
 .venv/
+venv/
+env/
+ENV/
+.python/
+backend/.python/
+
+# Python compiled bytecode & caches
 __pycache__/
-.pytest_cache/
 *.py[cod]
+*$py.class
+.pytest_cache/
 .coverage
 htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node & Frontend dependencies
 node_modules/
+**/node_modules/
+.pnpm-store/
+.npm/
+
+# Build outputs
 dist/
 build/
-.vite/
+*.dist
+frontend/dist/
 frontend/.vite/
-backend/uploads/materials/*.pdf
-backend/uploads/materials/*.docx
-backend/uploads/materials/*.pptx
-backend/uploads/materials/*.txt
+.vite/
+
+# User-uploaded content (preserve directory structure with .gitkeep)
+backend/uploads/materials/*
+!backend/uploads/materials/.gitkeep
+
+# Temporary test logs, stdout dumps, and diagnostic outputs
 *.log
+backend/*.txt
+!backend/requirements.txt
+backend/*_results.json
+backend/*_output.json
+backend/*.pdf
+
+# OS metadata & temporary files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archives
 *.zip
+*.tar.gz
 frontend.zip
+
+# AI Generator & Scaffolding residue
+frontend/client/public/__manus__/
+frontend/.manus-logs/
+.webdev/
+
+# Markdown Files
+after_decluttering.md
+before_decluttering.md
+clutter_files.md
+declutter.md
