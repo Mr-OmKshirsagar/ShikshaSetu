@@ -4,8 +4,6 @@ import {
   BookOpen,
   CheckSquare,
   FileQuestion,
-  FilePlus,
-  Layers,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -36,11 +34,9 @@ export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayou
   const navItems = [
     { id: "Dashboard", label: isHindi ? "डैशबोर्ड" : "Dashboard", icon: LayoutDashboard },
     { id: "Learning Materials", label: isHindi ? "प्रशिक्षण सामग्री" : "Learning Materials", icon: BookOpen },
-    { id: "Upload Material", label: isHindi ? "सामग्री अपलोड" : "Upload Material", icon: FilePlus },
     { id: "AI Question Generator", label: isHindi ? "एआई प्रश्न निर्माता" : "AI Question Generator", icon: FileQuestion },
     { id: "Question Review", label: isHindi ? "समीक्षा स्टूडियो" : "Question Review", icon: CheckSquare },
     { id: "Quiz Studio", label: isHindi ? "प्रश्नोत्तरी स्टूडियो" : "Quiz Studio", icon: PenTool },
-    { id: "Published Quizzes", label: isHindi ? "प्रकाशित प्रश्नोत्तरी" : "Published Quizzes", icon: Layers },
     { id: "Learner Results", label: isHindi ? "प्रशिक्षु परिणाम" : "Learner Results", icon: BarChart2 },
     { id: "Profile", label: isHindi ? "प्रोफ़ाइल" : "Profile", icon: UserRound },
   ];
