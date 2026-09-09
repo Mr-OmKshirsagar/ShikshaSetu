@@ -1,4 +1,5 @@
-import React, { useState, Suspense, lazy } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
+import { useLocation } from "wouter";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -117,17 +118,59 @@ function LoadingScreen() {
   );
 }
 
+// ─── Routing Helpers ──────────────────────────────────────────────────────────
+
+function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function getRoleSlug(role?: string): "trainer" | "admin" | "official" {
+  const r = (role || "").toUpperCase();
+  if (r === "TRAINER") return "trainer";
+  if (r === "ADMIN") return "admin";
+  return "official";
+}
+
 // ─── Trainer Portal App ───────────────────────────────────────────────────────
 
+const TRAINER_SLUG_MAP: Record<string, string> = {
+  "dashboard": "Dashboard",
+  "learning-materials": "Learning Materials",
+  "upload-material": "Learning Materials",
+  "ai-question-generator": "AI Question Generator",
+  "question-review": "Question Review",
+  "quiz-studio": "Quiz Studio",
+  "published-quizzes": "Quiz Studio",
+  "learner-results": "Learner Results",
+  "profile": "Profile",
+};
+
 function TrainerApp() {
-  const [activePage, setActivePage] = useState("Dashboard");
+  const [location, navigate] = useLocation();
   const [navContext, setNavContext] = useState<{ materialId?: string; quizId?: string }>({});
 
+  const match = location.match(/^\/trainer\/?([^\/?#]+)?/i);
+  const rawSlug = match && match[1] ? match[1].toLowerCase() : "";
+  const activePage = TRAINER_SLUG_MAP[rawSlug] || "Dashboard";
+
+  useEffect(() => {
+    if (!rawSlug || !TRAINER_SLUG_MAP[rawSlug]) {
+      navigate("/trainer/dashboard", { replace: true });
+    }
+  }, [rawSlug, navigate]);
+
   const handleNavigate = (page: string, context?: { materialId?: string; quizId?: string }) => {
-    setActivePage(page);
     if (context) {
       setNavContext(context);
     }
+    const raw = toSlug(page);
+    const canonicalPage = TRAINER_SLUG_MAP[raw] || page;
+    const slug = toSlug(canonicalPage);
+    navigate(`/trainer/${slug}`);
   };
 
   const renderPage = () => {
@@ -179,38 +222,68 @@ function TrainerApp() {
 
 // ─── Admin Portal App ─────────────────────────────────────────────────────────
 
+const ADMIN_SLUG_MAP: Record<string, string> = {
+  "dashboard": "Dashboard",
+  "workforce-overview": "Workforce Overview",
+  "competency-analytics": "Competency Analytics",
+  "skill-gap-analytics": "Skill Gap Analytics",
+  "training-effectiveness": "Training Effectiveness",
+  "emerging-skills": "Emerging Skills",
+  "capacity-planning": "Capacity Planning",
+  "users": "Users",
+  "reports": "Reports",
+  "profile": "Profile",
+};
+
 function AdminApp() {
-  const [activePage, setActivePage] = useState("Dashboard");
+  const [location, navigate] = useLocation();
+
+  const match = location.match(/^\/admin\/?([^\/?#]+)?/i);
+  const rawSlug = match && match[1] ? match[1].toLowerCase() : "";
+  const activePage = ADMIN_SLUG_MAP[rawSlug] || "Dashboard";
+
+  useEffect(() => {
+    if (!rawSlug || !ADMIN_SLUG_MAP[rawSlug]) {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [rawSlug, navigate]);
+
+  const handleNavigate = (page: string) => {
+    const raw = toSlug(page);
+    const canonicalPage = ADMIN_SLUG_MAP[raw] || page;
+    const slug = toSlug(canonicalPage);
+    navigate(`/admin/${slug}`);
+  };
 
   const renderPage = () => {
     switch (activePage) {
       case "Dashboard":
-        return <AdminDashboard onNavigate={setActivePage} />;
+        return <AdminDashboard onNavigate={handleNavigate} />;
       case "Workforce Overview":
-        return <WorkforceOverview onNavigate={setActivePage} />;
+        return <WorkforceOverview onNavigate={handleNavigate} />;
       case "Competency Analytics":
-        return <CompetencyAnalytics onNavigate={setActivePage} />;
+        return <CompetencyAnalytics onNavigate={handleNavigate} />;
       case "Skill Gap Analytics":
-        return <SkillGapAnalytics onNavigate={setActivePage} />;
+        return <SkillGapAnalytics onNavigate={handleNavigate} />;
       case "Training Effectiveness":
-        return <TrainingEffectiveness onNavigate={setActivePage} />;
+        return <TrainingEffectiveness onNavigate={handleNavigate} />;
       case "Emerging Skills":
-        return <EmergingSkills onNavigate={setActivePage} />;
+        return <EmergingSkills onNavigate={handleNavigate} />;
       case "Capacity Planning":
-        return <CapacityPlanning onNavigate={setActivePage} />;
+        return <CapacityPlanning onNavigate={handleNavigate} />;
       case "Users":
-        return <AdminUsers onNavigate={setActivePage} />;
+        return <AdminUsers onNavigate={handleNavigate} />;
       case "Reports":
-        return <AdminReports onNavigate={setActivePage} />;
+        return <AdminReports onNavigate={handleNavigate} />;
       case "Profile":
         return <AdminProfile />;
       default:
-        return <AdminDashboard onNavigate={setActivePage} />;
+        return <AdminDashboard onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <AdminLayout activePage={activePage} onNavigate={setActivePage}>
+    <AdminLayout activePage={activePage} onNavigate={handleNavigate}>
       <Suspense fallback={<PageSkeleton />}>
         {renderPage()}
       </Suspense>
@@ -220,13 +293,41 @@ function AdminApp() {
 
 // ─── Official / Employee app ──────────────────────────────────────────────────
 
+const OFFICIAL_SLUG_MAP: Record<string, string> = {
+  "dashboard": "Dashboard",
+  "my-competencies": "My Competencies",
+  "assessments": "Assessments",
+  "skill-gaps": "Skill Gaps",
+  "recommendations": "Recommendations",
+  "my-learning": "My Learning",
+  "quizzes": "Quizzes",
+  "evidence": "Evidence",
+  "progress": "Progress",
+  "profile": "Profile",
+};
+
 function OfficialApp() {
-  const [activePage, setActivePage] = useState("Dashboard");
+  const [location, navigate] = useLocation();
   const [navContext, setNavContext] = useState<{ competencyCode?: string; activityId?: string }>({});
 
+  const match = location.match(/^\/(?:official|employee)\/?([^\/?#]+)?/i);
+  const rawSlug = match && match[1] ? match[1].toLowerCase() : "";
+  const activePage = OFFICIAL_SLUG_MAP[rawSlug] || "Dashboard";
+
+  useEffect(() => {
+    if (!rawSlug || !OFFICIAL_SLUG_MAP[rawSlug]) {
+      navigate("/official/dashboard", { replace: true });
+    }
+  }, [rawSlug, navigate]);
+
   const handleNavigate = (page: string, context?: { competencyCode?: string; activityId?: string }) => {
-    setActivePage(page);
-    setNavContext(context || {});
+    if (context) {
+      setNavContext(context);
+    }
+    const raw = toSlug(page);
+    const canonicalPage = OFFICIAL_SLUG_MAP[raw] || page;
+    const slug = toSlug(canonicalPage);
+    navigate(`/official/${slug}`);
   };
 
   const renderPage = () => {
@@ -289,8 +390,42 @@ function OfficialApp() {
 
 function RoleRouter() {
   const { user, loading } = useAuth();
+  const [location, navigate] = useLocation();
+
+  const userRole = user ? getRoleSlug(user.access_role) : null;
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user) {
+      // Unauthenticated: allow only /login and /register
+      if (location !== "/login" && location !== "/register") {
+        navigate("/login", { replace: true });
+      }
+    } else {
+      // Authenticated: redirect away from auth routes or root
+      const isAuthPage = location === "/login" || location === "/register" || location === "/";
+      const isBareRole = location === `/${userRole}`;
+      if (isAuthPage || isBareRole) {
+        navigate(`/${userRole}/dashboard`, { replace: true });
+        return;
+      }
+
+      // If user attempts to access a role section they do not belong to:
+      const roleMatch = location.match(/^\/([^\/?#]+)/i);
+      const requestedRole = roleMatch ? roleMatch[1].toLowerCase() : "";
+      const allRoles = ["trainer", "admin", "official", "employee"];
+      if (allRoles.includes(requestedRole)) {
+        const canonicalRequested = requestedRole === "employee" ? "official" : requestedRole;
+        if (canonicalRequested !== userRole) {
+          navigate(`/${userRole}/dashboard`, { replace: true });
+        }
+      }
+    }
+  }, [loading, user, userRole, location, navigate]);
 
   if (loading) return <LoadingScreen />;
+
   if (!user) {
     return (
       <Suspense fallback={<LoadingScreen />}>

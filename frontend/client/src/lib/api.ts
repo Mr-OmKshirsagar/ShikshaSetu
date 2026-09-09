@@ -43,9 +43,11 @@ export class ApiError extends Error {
 
 export type User = {
   id: string;
+  learner_id?: string;
   email: string;
   full_name: string;
   role_id: string;
+
   designation: string;
   department: string;
   employee_id: string;
@@ -545,7 +547,23 @@ export type TrainerLearnerAttempt = {
   } | null;
 };
 
+export type TrainerLearnerSummary = {
+  learner_id: string;
+  id?: string;
+  _id?: string;
+  full_name: string;
+  email: string;
+  department: string;
+  designation: string;
+  employee_id?: string;
+  access_role?: string;
+  assigned_quizzes_count: number;
+  completed_quizzes_count: number;
+  average_score: number;
+};
+
 // Kept for legacy references — the real type is now QuizAttemptResult above.
+
 // This empty re-export avoids import errors in files that still import QuizAttemptResult.
 
 
@@ -1310,8 +1328,9 @@ export const api = {
     },
 
     learners: {
-      list: () => request<User[]>("/trainer/learners"),
+      list: () => request<TrainerLearnerSummary[]>("/trainer/learners"),
     },
+
   },
 
   // ─── Admin namespace ────────────────────────────────────────────────────────
