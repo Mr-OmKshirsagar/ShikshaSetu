@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Eye, EyeOff, Building2, Briefcase, Award, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -8,7 +9,8 @@ import { DEPARTMENT_TAXONOMY } from "@/lib/departments";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [isRegister, setIsRegister] = useState(false);
+  const [location, navigate] = useLocation();
+  const isRegister = location === "/register";
   const [showPassword, setShowPassword] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [busy, setBusy] = useState(false);
@@ -141,7 +143,7 @@ export default function LoginPage() {
         });
 
         toast.success("Account created successfully. Please sign in.");
-        setIsRegister(false);
+        navigate("/login");
         setPassword("");
       } else {
         await login(email.trim(), password.trim());
@@ -424,8 +426,8 @@ export default function LoginPage() {
               type="button"
               className="mt-5 w-full text-xs font-bold text-[#0f9f92] hover:underline btn-interactive"
               onClick={() => {
-                setIsRegister(!isRegister);
                 setError("");
+                navigate(isRegister ? "/login" : "/register");
               }}
             >
               {isRegister

@@ -54,6 +54,33 @@ class Settings(BaseSettings):
     igot_client_id: str = Field(default="", validation_alias="IGOT_CLIENT_ID")
     igot_client_secret: str = Field(default="", validation_alias="IGOT_CLIENT_SECRET")
 
+    # Phase 6D: Email / SMTP Configuration
+    EMAIL_HOST: str = Field(default="", validation_alias=AliasChoices("EMAIL_HOST", "email_host"))
+    EMAIL_PORT: int = Field(default=587, validation_alias=AliasChoices("EMAIL_PORT", "email_port"))
+    EMAIL_USER: str = Field(default="", validation_alias=AliasChoices("EMAIL_USER", "email_user"))
+    EMAIL_PASSWORD: str = Field(default="", validation_alias=AliasChoices("EMAIL_PASSWORD", "email_password"))
+    EMAIL_FROM: str = Field(default="noreply@shikshasetu.com", validation_alias=AliasChoices("EMAIL_FROM", "email_from"))
+
+    @property
+    def email_host(self) -> str:
+        return self.EMAIL_HOST
+
+    @property
+    def email_port(self) -> int:
+        return self.EMAIL_PORT
+
+    @property
+    def email_user(self) -> str:
+        return self.EMAIL_USER
+
+    @property
+    def email_password(self) -> str:
+        return self.EMAIL_PASSWORD
+
+    @property
+    def email_from(self) -> str:
+        return self.EMAIL_FROM
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

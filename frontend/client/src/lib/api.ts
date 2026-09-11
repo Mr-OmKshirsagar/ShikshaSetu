@@ -43,9 +43,11 @@ export class ApiError extends Error {
 
 export type User = {
   id: string;
+  learner_id?: string;
   email: string;
   full_name: string;
   role_id: string;
+
   designation: string;
   department: string;
   employee_id: string;
@@ -545,7 +547,23 @@ export type TrainerLearnerAttempt = {
   } | null;
 };
 
+export type TrainerLearnerSummary = {
+  learner_id: string;
+  id?: string;
+  _id?: string;
+  full_name: string;
+  email: string;
+  department: string;
+  designation: string;
+  employee_id?: string;
+  access_role?: string;
+  assigned_quizzes_count: number;
+  completed_quizzes_count: number;
+  average_score: number;
+};
+
 // Kept for legacy references — the real type is now QuizAttemptResult above.
+
 // This empty re-export avoids import errors in files that still import QuizAttemptResult.
 
 
@@ -1311,8 +1329,9 @@ export const api = {
     },
 
     learners: {
-      list: () => request<User[]>("/trainer/learners"),
+      list: () => request<TrainerLearnerSummary[]>("/trainer/learners"),
     },
+
   },
 
   // ─── Admin namespace ────────────────────────────────────────────────────────
@@ -1460,75 +1479,5 @@ export const api = {
         status: string;
       }[]>("/adaptive-assessments/history", {}, { skipCache: true }),
   },
-
-  // ── Legacy flat aliases kept for backwards-compat with LiveHome.tsx ──────
-  /** @deprecated use api.auth.login */
-  login: (payload: { email: string; password: string }) =>
-    request<{ access_token: string; user: User }>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  /** @deprecated use api.auth.register */
-  register: (payload: Record<string, unknown>) =>
-    request<User>("/auth/register", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  /** @deprecated use api.auth.me */
-  me: () => request<User>("/auth/me"),
-  /** @deprecated use api.auth.updateProfile */
-  updateProfile: (payload: Record<string, string>) =>
-    request<User>("/users/me", { method: "PUT", body: JSON.stringify(payload) }),
-  /** @deprecated use api.roles.getRequirements */
-  requirements: (roleId: string) =>
-    request<RoleRequirement[]>(`/roles/${roleId}/requirements`),
-  /** @deprecated use api.recommendations.byCompetency */
-  competencyResources: (competencyCode: string) =>
-    request<Recommendation[]>(
-      `/recommendations/competencies/${encodeURIComponent(competencyCode)}/resources`
-    ),
-  /** @deprecated use api.learningMaterials.upload */
-  uploadMaterial: (file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    return request<LearningMaterial>("/learning-materials/upload", {
-      method: "POST",
-      body: form,
-    });
-  },
-  /** @deprecated use api.learningMaterials.get */
-  material: (materialId: string) =>
-    request<LearningMaterial>(`/learning-materials/${materialId}`),
-  /** @deprecated use api.trainer.quizzes.create */
-  createQuiz: (payload: any) =>
-    request<TrainerQuiz>("/trainer/quizzes", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  /** @deprecated use api.quizzes.get */
-  quiz: (quizId: string) => request<QuizDetail>(`/quizzes/${quizId}`),
-  /** @deprecated use api.quizzes.submit */
-  submitQuiz: (
-    quizId: string,
-    answers: { question_id: string; selected_answer: string }[]
-  ) =>
-    request<QuizAttemptResult>(`/quizzes/${quizId}/submit`, {
-      method: "POST",
-      body: JSON.stringify({ answers }),
-    }),
-  /** @deprecated use api.assessments.start */
-  startAssessment: (assessment_key = "initial-competency-v1") =>
-    request<AssessmentAttempt>("/assessments", {
-      method: "POST",
-      body: JSON.stringify({ assessment_key }),
-    }),
-  /** @deprecated use api.assessments.get */
-  getAttempt: (id: string) =>
-    request<AssessmentAttempt>(`/assessments/${id}`),
-  /** @deprecated use api.assessments.submit */
-  submitAssessment: (id: string, payload: unknown) =>
-    request<AssessmentSubmitResponse>(`/assessments/${id}/submit`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
 };
+
