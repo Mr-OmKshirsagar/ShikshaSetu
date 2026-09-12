@@ -164,10 +164,15 @@ class TrainerLearnerSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     learner_id: str
+    id: Optional[str] = None
+    _id: Optional[str] = None
     full_name: str
     email: str
     department: str
     designation: str
+    employee_id: Optional[str] = None
+    access_role: Optional[str] = "OFFICIAL"
     assigned_quizzes_count: int
     completed_quizzes_count: int
     average_score: float
+

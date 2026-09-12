@@ -24,6 +24,7 @@ import {
   TrainerQuiz,
   TrainerQuestion,
   User,
+  TrainerLearnerSummary,
   TrainerMaterial,
   LearningMaterial,
 } from "@/lib/api";
@@ -38,7 +39,7 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
   const [quizzes, setQuizzes] = useState<TrainerQuiz[]>([]);
   const [approvedQuestions, setApprovedQuestions] = useState<TrainerQuestion[]>([]);
   const [materials, setMaterials] = useState<LearningMaterial[]>([]);
-  const [learners, setLearners] = useState<User[]>([]);
+  const [learners, setLearners] = useState<TrainerLearnerSummary[]>([]);
   const [competencies, setCompetencies] = useState<{ code: string; name: string }[]>([
     { code: "STAT_SAMPLING", name: "Statistical Sampling & Survey Design" },
     { code: "STAT_DATA_QUALITY_FRAMEWORKS", name: "Data Quality Frameworks" },
@@ -185,17 +186,31 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
     setAssignModalOpen(true);
   };
 
+  const getLearnerId = (learner: TrainerLearnerSummary | User | any): string => {
+    return (learner?.learner_id || learner?.id || learner?._id || "").toString();
+  };
+
   const handleToggleLearner = (userId: string) => {
+    if (!userId) return;
     setSelectedLearnerIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   };
 
   const handleSelectAllLearners = () => {
-    if (selectedLearnerIds.length === filteredLearners.length) {
-      setSelectedLearnerIds([]);
+    const allFilteredIds = filteredLearners
+      .map(getLearnerId)
+      .filter((id): id is string => Boolean(id));
+
+    if (
+      allFilteredIds.length > 0 &&
+      allFilteredIds.every((id) => selectedLearnerIds.includes(id))
+    ) {
+      setSelectedLearnerIds((prev) =>
+        prev.filter((id) => !allFilteredIds.includes(id))
+      );
     } else {
-      setSelectedLearnerIds(filteredLearners.map((l) => (l as any).learner_id || l.id || (l as any)._id || "").filter(Boolean));
+      setSelectedLearnerIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
     }
   };
 
@@ -640,7 +655,11 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
                     onClick={handleSelectAllLearners}
                     className="text-xs font-bold text-[#ef7e37] hover:underline whitespace-nowrap btn-interactive"
                   >
-                    {selectedLearnerIds.length === filteredLearners.length
+                    {filteredLearners.length > 0 &&
+                    filteredLearners.every((l) => {
+                      const id = getLearnerId(l);
+                      return id && selectedLearnerIds.includes(id);
+                    })
                       ? "Deselect All"
                       : "Select All"}
                   </button>
@@ -654,14 +673,16 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
                     No eligible officials / learners found.
                   </div>
                 ) : (
-                filteredLearners.map((learner) => {
-                    const lid = (learner as any).learner_id || learner.id || (learner as any)._id || "";
-                    const isSelected = lid !== "" && selectedLearnerIds.includes(lid);
+                  filteredLearners.map((learner) => {
+                    const lid = getLearnerId(learner);
+                    const isSelected = Boolean(lid && selectedLearnerIds.includes(lid));
 
                     return (
                       <div
-                        key={lid}
-                        onClick={() => handleToggleLearner(lid)}
+                        key={lid || learner.email}
+                        onClick={() => {
+                          if (lid) handleToggleLearner(lid);
+                        }}
                         className={`flex items-center justify-between rounded-xl border p-3 cursor-pointer transition-all ${
                           isSelected
                             ? "border-orange-300 bg-orange-50/50 shadow-sm"
@@ -672,8 +693,12 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => {}}
-                            className="h-4 w-4 rounded border-slate-300 accent-[#ef7e37]"
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              if (lid) handleToggleLearner(lid);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-4 w-4 rounded border-slate-300 accent-[#ef7e37] cursor-pointer"
                           />
                           <div>
                             <div className="text-xs font-bold text-slate-800">
