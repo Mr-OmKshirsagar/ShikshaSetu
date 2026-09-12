@@ -130,6 +130,12 @@ class TestRecommendationsE2E:
         assert response.status_code == 200
         recs_data = response.json()
         assert "recommendations" in recs_data or "total_recommendations" in recs_data
+        for rec in recs_data.get("recommendations", []):
+            assert "resource" in rec, "Recommendation must contain resource object"
+            res = rec["resource"]
+            assert isinstance(res, dict), "resource must be serialized as an object"
+            assert "title" in res and isinstance(res["title"], str) and len(res["title"]) > 0, "resource must have human-readable title"
+            assert "resource_id" in res and isinstance(res["resource_id"], str), "resource must have resource_id"
 
     def test_get_resource_details(self, test_client, test_user, sample_igot_resource, headers=None):
         """Test retrieving resource details via API."""

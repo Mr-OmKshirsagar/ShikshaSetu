@@ -104,7 +104,7 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
       competency_code: item.competency_code,
       competency_name: item.competency_name,
       title: `Adaptive Assessment: ${item.competency_name || item.competency_code}`,
-      source: "Standardized IRT Adaptive Examination",
+      source: "Standardized Adaptive Difficulty Examination",
       score: norm,
       confidence: 0.85,
       date: item.completed_at,

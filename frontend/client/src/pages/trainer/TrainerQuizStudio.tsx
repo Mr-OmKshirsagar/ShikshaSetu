@@ -195,7 +195,7 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
     if (selectedLearnerIds.length === filteredLearners.length) {
       setSelectedLearnerIds([]);
     } else {
-      setSelectedLearnerIds(filteredLearners.map((l) => l.id || (l as any)._id));
+      setSelectedLearnerIds(filteredLearners.map((l) => (l as any).learner_id || l.id || (l as any)._id || "").filter(Boolean));
     }
   };
 
@@ -240,12 +240,14 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
 
   const filteredLearners = learners.filter((l) => {
     const term = learnerSearch.toLowerCase();
+    const learner = l as any;
     return (
-      l.full_name?.toLowerCase().includes(term) ||
-      l.email?.toLowerCase().includes(term) ||
-      l.department?.toLowerCase().includes(term) ||
-      l.designation?.toLowerCase().includes(term) ||
-      l.employee_id?.toLowerCase().includes(term)
+      learner.full_name?.toLowerCase().includes(term) ||
+      learner.email?.toLowerCase().includes(term) ||
+      learner.department?.toLowerCase().includes(term) ||
+      learner.designation?.toLowerCase().includes(term) ||
+      learner.employee_id?.toLowerCase().includes(term) ||
+      learner.learner_id?.toLowerCase().includes(term)
     );
   });
 
@@ -652,9 +654,9 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
                     No eligible officials / learners found.
                   </div>
                 ) : (
-                  filteredLearners.map((learner) => {
-                    const lid = learner.id || (learner as any)._id;
-                    const isSelected = selectedLearnerIds.includes(lid);
+                filteredLearners.map((learner) => {
+                    const lid = (learner as any).learner_id || learner.id || (learner as any)._id || "";
+                    const isSelected = lid !== "" && selectedLearnerIds.includes(lid);
 
                     return (
                       <div
@@ -675,16 +677,16 @@ export function TrainerQuizStudio({ onNavigate }: TrainerQuizStudioProps) {
                           />
                           <div>
                             <div className="text-xs font-bold text-slate-800">
-                              {learner.full_name}
+                              {(learner as any).full_name}
                             </div>
                             <div className="text-[11px] text-slate-400">
-                              {learner.email} · {learner.designation || learner.department || "Officer"}
+                              {(learner as any).email} · {(learner as any).designation || (learner as any).department || "Officer"}
                             </div>
                           </div>
                         </div>
 
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">
-                          {learner.access_role || "OFFICIAL"}
+                          {(learner as any).access_role || "OFFICIAL"}
                         </span>
                       </div>
                     );

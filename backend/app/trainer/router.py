@@ -134,10 +134,13 @@ def generate_questions_for_review(
         generator = MCQGenerator(llm_provider, retriever)
 
         # Generate questions
+        max_allowed = max(getattr(settings, "max_questions_per_generation", 20) or 20, 10)
+        target_count = min(payload.question_count, max_allowed)
+
         raw_questions = generator.generate_questions(
             query=payload.competency_code,
             competency_code=payload.competency_code,
-            question_count=min(payload.question_count, settings.max_questions_per_generation),
+            question_count=target_count,
             difficulty=payload.difficulty,
         )
 

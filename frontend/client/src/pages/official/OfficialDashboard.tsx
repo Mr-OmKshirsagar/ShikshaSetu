@@ -382,11 +382,24 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
               {topGap ? `Close your ${topGap.competency_name} gap` : "Verify Core Competencies"}
             </h3>
 
-            <p className="mt-2 text-xs text-slate-200 leading-relaxed">
-              {topRec
-                ? `Recommended curriculum: "${topRec.resource_title || topRec.title || topRec.resource || 'Course'}" from ${topRec.provider || "iGOT"}. Matched to your role responsibilities.`
-                : "Engage in recommended learning resources from iGOT/NSSTA and complete capability assessments."}
-            </p>
+            {(() => {
+              const resourceTitle =
+                typeof topRec?.resource === "object"
+                  ? topRec.resource?.title
+                  : topRec?.resource_title || topRec?.title || topRec?.resource;
+              const provider =
+                topRec?.provider ||
+                (typeof topRec?.resource === "object" ? topRec.resource?.provider : null) ||
+                "iGOT";
+
+              return (
+                <p className="mt-2 text-xs text-slate-200 leading-relaxed">
+                  {topRec
+                    ? `Recommended curriculum: "${resourceTitle || "Targeted Capability Course"}" from ${provider}. Matched to your role responsibilities.`
+                    : "Engage in recommended learning resources from iGOT/NSSTA and complete capability assessments."}
+                </p>
+              );
+            })()}
 
             {topGap && (
               <div className="mt-5 rounded-xl bg-white/10 p-3.5 backdrop-blur-sm border border-white/10 anim-fade-up">

@@ -413,10 +413,13 @@ async def generate_questions(
 
         # Generate questions
         query = request_body.competency_code
+        max_allowed = max(getattr(settings, "max_questions_per_generation", 20) or 20, 10)
+        target_count = min(request_body.question_count, max_allowed)
+
         questions = generator.generate_questions(
             query=query,
             competency_code=request_body.competency_code,
-            question_count=min(request_body.question_count, settings.max_questions_per_generation),
+            question_count=target_count,
             difficulty=request_body.difficulty,
         )
 

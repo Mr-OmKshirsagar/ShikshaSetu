@@ -4,7 +4,9 @@ for the trainer account (trainer@shikshasetu.gov.in) so that AI Question Generat
 Review Studio, and Quiz Studio operate out of the box with authoritative content.
 """
 from datetime import UTC, datetime
+from typing import Optional
 from bson import ObjectId
+from pymongo.database import Database
 from app.core.config import get_settings
 from app.core.database import initialize_database, close_database
 
@@ -133,9 +135,12 @@ CURRICULUM_DOCUMENTS = [
 ]
 
 
-def reseed_trainer_materials():
+def reseed_trainer_materials(database: Database = None):
     settings = get_settings()
-    client, db = initialize_database(settings.mongodb_uri, settings.mongodb_database)
+    client = None
+    db = database
+    if db is None:
+        client, db = initialize_database(settings.mongodb_uri, settings.mongodb_database)
     try:
         # Find trainer user
         trainer_user = db.users.find_one({"email": "trainer@shikshasetu.gov.in"})
@@ -217,7 +222,8 @@ def reseed_trainer_materials():
 
         print("Trainer materials and chunks seeded successfully!")
     finally:
-        close_database(client)
+        if client is not None:
+            close_database(client)
 
 
 if __name__ == "__main__":

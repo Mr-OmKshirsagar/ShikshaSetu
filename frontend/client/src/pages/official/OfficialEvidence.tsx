@@ -317,7 +317,7 @@ export function OfficialEvidence({ onNavigate }: OfficialEvidenceProps) {
                   <div className="rounded-xl border border-slate-100 bg-[#f8fafc] p-3">
                     <div className="font-semibold text-slate-400 uppercase text-[10px] tracking-wider">Verification Protocol</div>
                     <div className="font-semibold text-slate-800 mt-0.5">
-                      {isAuth ? "Standardized Adaptive IRT Examination" : "iGOT Self-Paced Module Completion"}
+                      {isAuth ? "Standardized Adaptive Difficulty Examination" : "iGOT Self-Paced Module Completion"}
                     </div>
                   </div>
                   <div className="rounded-xl border border-slate-100 bg-[#f8fafc] p-3">

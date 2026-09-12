@@ -71,11 +71,11 @@ class MCQGenerator:
                 # Format context
                 context, chunk_ids = self.retriever.get_context_for_generation(
                     retrieved_chunks,
-                    max_tokens=2000
+                    max_tokens=3000
                 )
                 
                 # Generate questions
-                batch_size = min(question_count - len(questions), 3)
+                batch_size = min(question_count - len(questions), 10)
                 generated = self._generate_batch(
                     context=context,
                     chunk_ids=chunk_ids,
@@ -176,7 +176,7 @@ RESPONSE FORMAT (valid JSON array only, no markdown, no extra text):
                 try:
                     response_data = self.llm_provider.generate_json(
                         prompt=prompt,
-                        max_tokens=2000,
+                        max_tokens=4000,
                         temperature=0.7
                     )
                     # B2 FIX: generate_json now always returns a list (fixed in gemini_provider).
@@ -191,7 +191,7 @@ RESPONSE FORMAT (valid JSON array only, no markdown, no extra text):
                     # Fall back to text generation and parsing
                     response_text = self.llm_provider.generate(
                         prompt=prompt,
-                        max_tokens=2000,
+                        max_tokens=4000,
                         temperature=0.7
                     )
                     questions_data = self._parse_response(response_text)
@@ -199,7 +199,7 @@ RESPONSE FORMAT (valid JSON array only, no markdown, no extra text):
                 # Standard text generation and parsing
                 response_text = self.llm_provider.generate(
                     prompt=prompt,
-                    max_tokens=2000,
+                    max_tokens=4000,
                     temperature=0.7
                 )
                 questions_data = self._parse_response(response_text)

@@ -348,6 +348,37 @@ def test_generate_questions_into_review_studio():
     client.close()
 
 
+def test_generate_10_questions_into_review_studio():
+    """Verify that requesting 10 questions returns exactly 10 questions."""
+    client, database, settings = make_trainer_app()
+    trainer = create_user(database, "trainer_10@test.com", "TRAINER", "TRN-010")
+    token = create_access_token(str(trainer["_id"]), settings)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    mat = create_material(database, str(trainer["_id"]), "Advanced_Sampling.pdf")
+
+    payload = {
+        "competency_code": "STAT_SAMPLING",
+        "question_count": 10,
+        "difficulty": "MEDIUM",
+    }
+    resp = client.post(
+        f"/api/v1/trainer/materials/{mat['_id']}/generate",
+        headers=headers,
+        json=payload,
+    )
+    assert resp.status_code == 200
+    questions = resp.json()
+    assert len(questions) == 10
+    for q in questions:
+        assert q["status"] == "GENERATED"
+        assert q["competency_code"] == "STAT_SAMPLING"
+        assert q["material_id"] == str(mat["_id"])
+        assert len(q["options"]) >= 3
+        assert q["correct_answer"] in ["A", "B", "C", "D", "E"]
+    client.close()
+
+
 def test_question_review_lifecycle_edit_approve_reject():
     client, database, settings = make_trainer_app()
     trainer = create_user(database, "trainer@test.com", "TRAINER", "TRN-001")
@@ -754,6 +785,144 @@ def test_trainer_edge_cases_and_validation():
         headers=headers,
         json={"learner_ids": []},
     ).status_code == 422
+
+    client.close()
+
+
+
+
+# ==============================================================================
+# 6. Email Notification Tests
+# ==============================================================================
+
+def test_quiz_assignment_sends_email_notifications():
+    """Test that email notifications are sent when assigning a quiz to learners."""
+    from unittest.mock import patch, MagicMock
+
+    client, database, settings = make_trainer_app()
+    trainer = create_user(database, "trainer@test.com", "TRAINER", "TRN-001")
+    learner1 = create_user(database, "learner1@example.com", "OFFICIAL", "EMP-001")
+    learner2 = create_user(database, "learner2@example.com", "OFFICIAL", "EMP-002")
+
+    token_trainer = create_access_token(str(trainer["_id"]), settings)
+    headers_trainer = {"Authorization": f"Bearer {token_trainer}"}
+
+    mat = create_material(database, str(trainer["_id"]))
+
+    q1 = TrainerQuestion.create(
+        trainer_id=str(trainer["_id"]),
+        material_id=str(mat["_id"]),
+        competency_code="STAT_SAMPLING",
+        question="Approved Q1",
+        options=["A", "B", "C", "D"],
+        correct_answer="A",
+        explanation="Expl",
+        status=QuestionReviewStatus.APPROVED,
+    )
+    database.trainer_questions.insert_one(q1)
+
+    # Create and publish quiz
+    resp_create = client.post(
+        "/api/v1/trainer/quizzes",
+        headers=headers_trainer,
+        json={
+            "title": "Python Fundamentals Quiz",
+            "description": "Test your Python knowledge",
+            "competency_code": "STAT_SAMPLING",
+            "question_ids": [str(q1["_id"])],
+        },
+    )
+    quiz_id = resp_create.json()["id"]
+    client.post(f"/api/v1/trainer/quizzes/{quiz_id}/publish", headers=headers_trainer)
+
+    # Mock the email service
+    with patch("app.trainer.service.get_email_service") as mock_email_service_getter:
+        mock_email_service = MagicMock()
+        mock_email_service.send_quiz_assignment_notification.return_value = True
+        mock_email_service_getter.return_value = mock_email_service
+
+        # Assign quiz to learners
+        resp_assign = client.post(
+            f"/api/v1/trainer/quizzes/{quiz_id}/assign",
+            headers=headers_trainer,
+            json={"learner_ids": [str(learner1["_id"]), str(learner2["_id"])]},
+        )
+
+        assert resp_assign.status_code == 200
+        data = resp_assign.json()
+        assert data["assigned_learners_count"] == 2
+        assert "Email notifications sent: 2" in data["message"]
+
+        # Verify email service was called for each learner
+        assert mock_email_service.send_quiz_assignment_notification.call_count == 2
+
+        # Verify the email content for first learner
+        first_call = mock_email_service.send_quiz_assignment_notification.call_args_list[0]
+        call_kwargs = first_call[1]
+        assert call_kwargs["learner_email"] in ["learner1@example.com", "learner2@example.com"]
+        assert call_kwargs["quiz_title"] == "Python Fundamentals Quiz"
+        assert call_kwargs["quiz_description"] == "Test your Python knowledge"
+        # Trainer full_name format: "Trainer User (TRN-001)"
+        assert "Trainer" in call_kwargs["trainer_name"] and "TRN-001" in call_kwargs["trainer_name"]
+
+    client.close()
+
+
+def test_quiz_assignment_handles_email_failures_gracefully():
+    """Test that quiz assignment succeeds even if email sending fails."""
+    from unittest.mock import patch, MagicMock
+
+    client, database, settings = make_trainer_app()
+    trainer = create_user(database, "trainer@test.com", "TRAINER", "TRN-001")
+    learner = create_user(database, "learner@example.com", "OFFICIAL", "EMP-001")
+
+    token_trainer = create_access_token(str(trainer["_id"]), settings)
+    headers_trainer = {"Authorization": f"Bearer {token_trainer}"}
+
+    mat = create_material(database, str(trainer["_id"]))
+
+    q1 = TrainerQuestion.create(
+        trainer_id=str(trainer["_id"]),
+        material_id=str(mat["_id"]),
+        competency_code="STAT_SAMPLING",
+        question="Approved Q1",
+        options=["A", "B", "C", "D"],
+        correct_answer="A",
+        explanation="Expl",
+        status=QuestionReviewStatus.APPROVED,
+    )
+    database.trainer_questions.insert_one(q1)
+
+    # Create and publish quiz
+    resp_create = client.post(
+        "/api/v1/trainer/quizzes",
+        headers=headers_trainer,
+        json={
+            "title": "Test Quiz",
+            "competency_code": "STAT_SAMPLING",
+            "question_ids": [str(q1["_id"])],
+        },
+    )
+    quiz_id = resp_create.json()["id"]
+    client.post(f"/api/v1/trainer/quizzes/{quiz_id}/publish", headers=headers_trainer)
+
+    # Mock email service to fail
+    with patch("app.trainer.service.get_email_service") as mock_email_service_getter:
+        mock_email_service = MagicMock()
+        mock_email_service.send_quiz_assignment_notification.return_value = False
+        mock_email_service_getter.return_value = mock_email_service
+
+        # Assign quiz - should succeed even if email fails
+        resp_assign = client.post(
+            f"/api/v1/trainer/quizzes/{quiz_id}/assign",
+            headers=headers_trainer,
+            json={"learner_ids": [str(learner["_id"])]},
+        )
+
+        assert resp_assign.status_code == 200
+        data = resp_assign.json()
+        assert data["assigned_learners_count"] == 1
+        assert "Email notifications sent: 0" in data["message"]
 
     client.close()
 

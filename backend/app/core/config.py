@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = Field(default=50, validation_alias="MAX_UPLOAD_SIZE_MB")
     chunk_size: int = Field(default=500, validation_alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=100, validation_alias="CHUNK_OVERLAP")
-    max_questions_per_generation: int = Field(default=5, validation_alias="MAX_QUESTIONS_PER_GENERATION")
+    max_questions_per_generation: int = Field(default=20, validation_alias="MAX_QUESTIONS_PER_GENERATION")
     generation_retry_count: int = Field(default=3, validation_alias="GENERATION_RETRY_COUNT")
 
     # RAG tuning — P0 upgrade
@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     igot_api_base_url: str = Field(default="", validation_alias="IGOT_API_BASE_URL")
     igot_client_id: str = Field(default="", validation_alias="IGOT_CLIENT_ID")
     igot_client_secret: str = Field(default="", validation_alias="IGOT_CLIENT_SECRET")
+
+    # Email/SMTP Configuration
+    EMAIL_HOST: str = Field(default="", validation_alias=AliasChoices("EMAIL_HOST", "SMTP_HOST"))
+    EMAIL_PORT: int = Field(default=587, validation_alias=AliasChoices("EMAIL_PORT", "SMTP_PORT"))
+    EMAIL_USER: str = Field(default="", validation_alias=AliasChoices("EMAIL_USER", "SMTP_USER"))
+    EMAIL_PASSWORD: str = Field(default="", validation_alias=AliasChoices("EMAIL_PASSWORD", "SMTP_PASSWORD"))
+    EMAIL_FROM: str = Field(default="", validation_alias=AliasChoices("EMAIL_FROM", "SMTP_FROM"))
 
     model_config = SettingsConfigDict(
         env_file=".env",
