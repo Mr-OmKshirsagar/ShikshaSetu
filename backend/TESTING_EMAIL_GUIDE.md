@@ -157,14 +157,6 @@ ERROR: Failed to send email to learner@example.com: ...
 ```
 
 **Check 3: SMTP Credentials**
-Verify your `.env` file has correct settings:
-```env
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=ap17052005@gmail.com
-EMAIL_PASSWORD=ejvi ffpa himy saxp  # This should be Gmail App Password
-EMAIL_FROM="<ap17052005@gmail.com>"
-```
 
 **Check 4: Gmail App Password**
 - Regular Gmail password won't work with SMTP
