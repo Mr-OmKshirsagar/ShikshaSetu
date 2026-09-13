@@ -46,6 +46,31 @@ The platform bridges training needs and learning outcomes using AI-assisted curr
 
 ---
 
+## 👥 Demo Personas & Instant Quick-Login
+
+The authentication screen (`/login`) features **one-click Quick Demo Access** buttons for immediate evaluation across all roles without typing credentials manually:
+
+| Role | Persona | Email | Password | Ministry / Department | Primary Demonstration Flow |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Official (Primary)** | **Rajesh Sharma** | `official@shikshasetu.gov.in` | `Password123!` | Ministry of Statistics & PI (MoSPI) · Statistical Officer | Review capability profile, address `STAT_SAMPLING` critical gap (2.45 / 4.0), explore grounded iGOT/NSSTA recommendations, take adaptive assessments |
+| **Trainer** | **Dr. Ananya Verma** | `trainer@shikshasetu.gov.in` | `Password123!` | National Statistical Systems Training Academy (NSSTA) | Upload course curriculum (PDF/DOCX), generate grounded AI MCQs, review/approve question bank items, publish quizzes |
+| **Admin** | **System Administrator** | `admin@shikshasetu.gov.in` | `Password123!` | Ministry of Statistics & PI (MoSPI HQ) | Executive workforce capability dashboard, department-wide skill gap analytics, training effectiveness, and capacity planning |
+
+#### 🏛️ Multi-Department Demonstration Accounts
+| Role | Email | Password | Ministry / Department | Professional Role |
+| :--- | :--- | :--- | :--- | :--- |
+| **Education Officer** | `edu.officer@shikshasetu.gov.in` | `Password123!` | Ministry of Education (MoE) | Teacher / Curriculum Designer |
+| **Informatics Officer** | `meity.officer@shikshasetu.gov.in` | `Password123!` | Ministry of Electronics & IT (MeitY) | Digital Governance Architect |
+| **Finance Officer** | `finance.officer@shikshasetu.gov.in` | `Password123!` | Ministry of Finance (MoF) | Public Financial Management Officer |
+
+> 🔄 **Idempotent Demo Reset**: Before or after any live demonstration, instantly restore the primary official persona back to the exact golden baseline (`STAT_SAMPLING = 2.45 / 4.00`, 0 rehearsal attempts):
+> ```bash
+> cd backend
+> python -m app.scripts.reset_demo_persona
+> ```
+
+---
+
 ## 🌐 Application URL Architecture
 
 ShikshaSetu employs clean, RESTful client-side routing with role-based access control (RBAC) and automatic route guarding:
@@ -183,28 +208,34 @@ ShikshaSetu/
 
 ### 1. Backend Setup
 
-1. Open a terminal and navigate to the `backend` folder:
+1. Open a terminal and activate the virtual environment:
+
+   **Windows (PowerShell)**:
+   ```powershell
+   # If from the repository root (recommended):
+   .venv\Scripts\Activate.ps1
+   cd backend
+
+   # OR if already inside the backend folder:
+   ..\.venv\Scripts\Activate.ps1
+   ```
+
+   **Linux / macOS**:
    ```bash
+   # From repository root:
+   source .venv/bin/activate
    cd backend
    ```
 
-2. Create and activate a virtual environment:
+   *(If creating a fresh virtual environment from scratch)*:
    ```bash
-   # Windows (PowerShell)
+   cd backend
    python -m venv .venv
-   .venv\Scripts\Activate.ps1
-
-   # Linux / macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-
-3. Install Python dependencies:
-   ```bash
+   # Windows: .venv\Scripts\Activate.ps1 | Linux: source .venv/bin/activate
    pip install -r requirements.txt
    ```
 
-4. Configure environment variables:
+2. Configure environment variables (if not already set up):
    ```bash
    # Copy example environment configuration
    cp .env.example .env
@@ -224,20 +255,28 @@ ShikshaSetu/
    GEMINI_API_KEY=your-google-gemini-api-key   # Optional for AI features
    ```
 
-5. Seed Master Data:
+3. Seed Master Data:
    Initialize the database with 42 canonical competencies, NSSTA & iGOT course catalogs, sample questions, and demo roles:
    ```bash
    python -m app.scripts.seed_master
    ```
 
-6. Start the FastAPI development server:
+   *(Optional)* Reset the primary demo official (`official@shikshasetu.gov.in` / Rajesh Sharma) to the exact golden baseline:
    ```bash
-   uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   python -m app.scripts.reset_demo_persona
+   ```
+
+4. Start the FastAPI development server:
+   ```bash
+   # From the backend directory
+   python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
    ```
 
    - **API Base**: `http://127.0.0.1:8000/api/v1`
    - **Interactive API Docs (Swagger)**: `http://127.0.0.1:8000/docs`
    - **Health Check**: `http://127.0.0.1:8000/api/v1/health`
+
+   > 💡 **Troubleshooting Port 8000**: If you encounter `[WinError 10013]` or address already in use, verify if another process is listening on port 8000 (`Get-NetTCPConnection -LocalPort 8000` on Windows or `lsof -i :8000` on Linux/macOS) and terminate the stale process.
 
 ---
 
@@ -273,11 +312,19 @@ cd backend
 pytest -v
 ```
 
-### Frontend TypeScript Verification
-Verify type safety and validate that all components and route hooks adhere to strict TypeScript checks:
+### Frontend Verification & Tests
+Verify type safety, run unit tests, and validate the production bundle:
 ```bash
 cd frontend
+
+# TypeScript strict type check
 npm run check
+
+# Vitest unit & regression tests
+npx vitest run
+
+# Production build verification
+npm run build
 ```
 
 ---

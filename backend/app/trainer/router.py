@@ -1,5 +1,8 @@
 """FastAPI router for Trainer Assessment Studio & Question Review."""
+import logging
 from typing import Annotated, Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
@@ -169,7 +172,11 @@ def generate_questions_for_review(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Question generation failed: {str(e)}")
+        logger.exception("Question generation failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Question generation failed due to an internal server error. Please try again.",
+        )
 
 
 @router.get("/questions", response_model=list[TrainerQuestionResponse])

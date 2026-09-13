@@ -96,9 +96,9 @@
 ## 10. Role Isolation
 - **Result**: 🟢 **VERIFIED INTACT**
 - **Official Account Verified**:
-  - User: `Rajesh Sharma` (`officer@shikshasetu.gov.in`)
+  - User: `Rajesh Sharma` (`official@shikshasetu.gov.in`)
   - Role: `Statistical Officer`
-  - Department: `Ministry of Statistics`
+  - Department: `Ministry of Statistics & Programme Implementation (MoSPI)`
   - Applicable Competencies: 6 role requirements mapped cleanly without cross-department pollution.
 
 ---

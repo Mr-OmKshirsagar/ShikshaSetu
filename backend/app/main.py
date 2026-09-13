@@ -25,6 +25,8 @@ from app.users.router import router as users_router
 from app.igot.router import router as igot_router
 from app.assistant.router import router as assistant_router
 from app.adaptive_assessments.router import router as adaptive_assessments_router
+from slowapi.errors import RateLimitExceeded
+from app.core.limiter import limiter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -74,26 +76,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         debug=app_settings.debug,
         lifespan=lifespan,
     )
+    is_production = app_settings.app_env.lower() in ("production", "prod")
+    cors_kwargs = {
+        "allow_origins": app_settings.cors_allowed_origins,
+        "allow_credentials": True,
+        "allow_methods": ["*"],
+        "allow_headers": ["*"],
+    }
+    if not is_production:
+        cors_kwargs["allow_origin_regex"] = r"https://.*\.vercel\.app|https://.*\.onrender\.com"
+
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:3002",
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:3001",
-            "http://127.0.0.1:3002",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:5174",
-        ],
-        allow_origin_regex="https://.*\\.vercel\\.app|https://.*\\.onrender\\.com",
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        **cors_kwargs,
     )
     application.state.settings = app_settings
+    application.state.limiter = limiter
+
+    @application.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Too many requests. Please slow down and try again later."},
+            headers={"Retry-After": "60"},
+        )
     application.include_router(health_router, prefix=app_settings.api_prefix)
     application.include_router(auth_router, prefix=app_settings.api_prefix)
     application.include_router(learning_materials_router, prefix=app_settings.api_prefix)

@@ -22,6 +22,21 @@ class Settings(BaseSettings):
         le=1440,
         validation_alias=AliasChoices("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "ACCESS_TOKEN_EXPIRE_MINUTES"),
     )
+    cors_allowed_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:3002",
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://127.0.0.1:3002",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+        ],
+        validation_alias=AliasChoices("CORS_ALLOWED_ORIGINS", "cors_allowed_origins"),
+    )
 
     # Phase 6: AI & Document Processing
     llm_provider: str = Field(default="mock", validation_alias=AliasChoices("LLM_PROVIDER", "llm_provider"))

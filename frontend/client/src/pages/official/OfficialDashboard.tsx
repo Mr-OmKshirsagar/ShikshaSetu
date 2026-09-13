@@ -19,6 +19,7 @@ import {
   api,
   SkillGapResponse,
   Competency,
+  Recommendation,
   RecommendationResponse,
   LearningActivityListResponse,
 } from "@/lib/api";
@@ -29,6 +30,52 @@ import { NumberReveal, ProgressBarFill, AnimatedSection } from "@/components/mot
 
 interface OfficialDashboardProps {
   onNavigate: (page: string, context?: { competencyCode?: string }) => void;
+}
+
+export function getRecommendationTitle(rec?: Recommendation | null): string {
+  if (!rec) return "";
+  const resource = rec.resource;
+  if (resource && typeof resource === "object") {
+    if (typeof resource.title === "string" && resource.title.trim()) {
+      return resource.title.trim();
+    }
+    if (typeof resource.name === "string" && resource.name.trim()) {
+      return resource.name.trim();
+    }
+    if (typeof resource.course_title === "string" && resource.course_title.trim()) {
+      return resource.course_title.trim();
+    }
+    if (typeof resource.resource_id === "string" && resource.resource_id.trim()) {
+      return resource.resource_id.trim();
+    }
+  }
+  if (typeof rec.resource_title === "string" && rec.resource_title.trim()) {
+    return rec.resource_title.trim();
+  }
+  if (typeof rec.title === "string" && rec.title.trim()) {
+    return rec.title.trim();
+  }
+  if (typeof resource === "string" && resource.trim()) {
+    return resource.trim();
+  }
+  return "Targeted Capability Course";
+}
+
+export function getRecommendationProvider(rec?: Recommendation | null): string {
+  if (!rec) return "iGOT";
+  if (typeof rec.provider === "string" && rec.provider.trim()) {
+    return rec.provider.trim();
+  }
+  const resource = rec.resource;
+  if (
+    resource &&
+    typeof resource === "object" &&
+    typeof resource.provider === "string" &&
+    resource.provider.trim()
+  ) {
+    return resource.provider.trim();
+  }
+  return "iGOT";
 }
 
 export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
@@ -379,23 +426,19 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
             </div>
 
             <h3 className="mt-3 text-lg font-bold">
-              {topGap ? `Close your ${topGap.competency_name} gap` : "Verify Core Competencies"}
+              {topGap
+                ? `Close your ${typeof topGap.competency_name === "string" ? topGap.competency_name : (topGap.competency_name as any)?.name || "competency"} gap`
+                : "Verify Core Competencies"}
             </h3>
 
             {(() => {
-              const resourceTitle =
-                typeof topRec?.resource === "object"
-                  ? topRec.resource?.title
-                  : topRec?.resource_title || topRec?.title || topRec?.resource;
-              const provider =
-                topRec?.provider ||
-                (typeof topRec?.resource === "object" ? topRec.resource?.provider : null) ||
-                "iGOT";
+              const resourceTitle = getRecommendationTitle(topRec);
+              const provider = getRecommendationProvider(topRec);
 
               return (
                 <p className="mt-2 text-xs text-slate-200 leading-relaxed">
                   {topRec
-                    ? `Recommended curriculum: "${resourceTitle || "Targeted Capability Course"}" from ${provider}. Matched to your role responsibilities.`
+                    ? `Recommended curriculum: "${resourceTitle}" from ${provider}. Matched to your role responsibilities.`
                     : "Engage in recommended learning resources from iGOT/NSSTA and complete capability assessments."}
                 </p>
               );

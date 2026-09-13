@@ -440,7 +440,7 @@ export default function LoginPage() {
               <div className="mt-6 border-t border-slate-100 pt-5">
                 <div className="mb-2.5 flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Quick Demo Access (SIH 2024 / MoSPI)
+                    QUICK DEMO ACCESS · SIH 2026
                   </span>
                   <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[9px] font-bold text-teal-700">
                     One-Click
@@ -466,7 +466,7 @@ export default function LoginPage() {
                     className="flex flex-col items-start rounded-xl border border-teal-200/80 bg-teal-50/50 p-2.5 text-left transition hover:border-teal-400 hover:bg-teal-50 focus:outline-none"
                   >
                     <span className="text-[11px] font-bold text-teal-900">📊 Statistical Officer</span>
-                    <span className="text-[10px] text-teal-700">MoSPI · Primary Persona</span>
+                    <span className="text-[10px] text-teal-700">MoSPI · Primary Demo</span>
                   </button>
 
                   <button
@@ -488,7 +488,7 @@ export default function LoginPage() {
                     className="flex flex-col items-start rounded-xl border border-blue-200/80 bg-blue-50/50 p-2.5 text-left transition hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
                   >
                     <span className="text-[11px] font-bold text-blue-900">🎓 NSSTA Trainer</span>
-                    <span className="text-[10px] text-blue-700">MoSPI · Question Gen</span>
+                    <span className="text-[10px] text-blue-700">Training · AI Question Generation</span>
                   </button>
 
                   <button
@@ -510,7 +510,7 @@ export default function LoginPage() {
                     className="flex flex-col items-start rounded-xl border border-amber-200/80 bg-amber-50/50 p-2.5 text-left transition hover:border-amber-400 hover:bg-amber-50 focus:outline-none"
                   >
                     <span className="text-[11px] font-bold text-amber-900">🏛️ MoSPI Admin</span>
-                    <span className="text-[10px] text-amber-700">Department Overview</span>
+                    <span className="text-[10px] text-amber-700">Workforce · Department Overview</span>
                   </button>
 
                   <button

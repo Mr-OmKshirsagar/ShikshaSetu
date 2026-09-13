@@ -476,7 +476,7 @@ def sync_users(
     demo_accounts = [
         {
             "email": "official@shikshasetu.gov.in",
-            "full_name": "Demo Official (Statistical Officer)",
+            "full_name": "Rajesh Sharma",
             "designation": "Statistical Officer",
             "department": "Ministry of Statistics & Programme Implementation (MoSPI)",
             "employee_id": "DEMO-OFF-001",
@@ -552,6 +552,7 @@ def sync_users(
                     "designation": acc["designation"],
                     "department": acc["department"],
                     "status": "active",
+                    "password_hash": hash_password("Password123!"),
                     "updated_at": now,
                 }}
             )

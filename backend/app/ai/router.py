@@ -1,8 +1,11 @@
 """API router for AI document processing and MCQ generation."""
+import logging
 import os
 import uuid
 from datetime import datetime
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Request
 from bson import ObjectId
@@ -163,9 +166,10 @@ async def upload_document(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Document upload processing failed: %s", e)
         raise HTTPException(
             status_code=500,
-            detail=f"Upload failed: {str(e)}"
+            detail="Document upload processing failed due to an internal server error."
         )
 
 
@@ -466,7 +470,8 @@ async def generate_questions(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("AI MCQ generation failed: %s", e)
         raise HTTPException(
             status_code=500,
-            detail=f"Generation failed: {str(e)}"
+            detail="AI question generation failed due to an internal server error."
         )

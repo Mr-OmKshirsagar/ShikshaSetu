@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime, UTC
 from typing import Dict, Any, Optional, List
 from bson import ObjectId
@@ -44,7 +45,7 @@ class AdaptiveAssessmentService:
         comp = self.db.competencies.find_one({"code": cleaned})
         if not comp:
             try:
-                comp = self.db.competencies.find_one({"code": {"$regex": f"^{cleaned}$", "$options": "i"}})
+                comp = self.db.competencies.find_one({"code": {"$regex": f"^{re.escape(cleaned)}$", "$options": "i"}})
             except Exception:
                 pass
         

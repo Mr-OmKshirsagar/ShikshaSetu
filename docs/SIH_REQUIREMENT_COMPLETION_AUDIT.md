@@ -84,6 +84,6 @@
   - 🎓 **Trainer Studio**: 10 comprehensive pages
   - 🛡️ **Admin Console**: 10 comprehensive pages
 - **Demo Accounts Verified**:
-  - `officer@shikshasetu.gov.in` (`Password@123`)
-  - `trainer@shikshasetu.gov.in` (`Password@123`)
-  - `admin@shikshasetu.gov.in` (`Password@123`)
+  - `official@shikshasetu.gov.in` (`Password123!`)
+  - `trainer@shikshasetu.gov.in` (`Password123!`)
+  - `admin@shikshasetu.gov.in` (`Password123!`)

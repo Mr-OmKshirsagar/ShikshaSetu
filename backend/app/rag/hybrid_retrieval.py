@@ -197,7 +197,7 @@ def _keyword_search(
         return []
 
     # Require each word to appear in the text
-    word_filters = [{"text": {"$regex": w, "$options": "i"}} for w in words[:5]]
+    word_filters = [{"text": {"$regex": re.escape(w), "$options": "i"}} for w in words[:5]]
     regex_filter = {**base_filter, "$and": word_filters} if word_filters else base_filter
 
     try:
@@ -226,10 +226,10 @@ def _learning_resource_search(
     if competency_code:
         search_filter["competencies"] = competency_code
     else:
-        keyword = words[0]
+        escaped_keyword = re.escape(words[0])
         search_filter["$or"] = [
-            {"title": {"$regex": keyword, "$options": "i"}},
-            {"description": {"$regex": keyword, "$options": "i"}},
+            {"title": {"$regex": escaped_keyword, "$options": "i"}},
+            {"description": {"$regex": escaped_keyword, "$options": "i"}},
         ]
 
     try:

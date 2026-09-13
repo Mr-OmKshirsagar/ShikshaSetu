@@ -11,7 +11,7 @@
 
 | Role | Name | Email | Password | Primary Mission |
 | :--- | :--- | :--- | :--- | :--- |
-| **Official** | Rajesh Sharma (Statistical Officer) | `officer@shikshasetu.gov.in` | `Password@123` | Identify gaps, learn on iGOT/NSSTA, take adaptive assessments, ask Karmayogi Co-Pilot. |
+| **Official** | Rajesh Sharma (Statistical Officer) | `official@shikshasetu.gov.in` | `Password123!` | Identify gaps, learn on iGOT/NSSTA, take adaptive assessments, ask Karmayogi Co-Pilot. |
 | **Trainer** | Dr. Ananya Verma (NSSTA Lead Faculty) | `trainer@shikshasetu.gov.in` | `Password@123` | Ingest MoSPI training materials, generate AI MCQs, review/approve questions, publish quizzes. |
 | **Admin** | System Administrator (Director, CBC/DoPT)| `admin@shikshasetu.gov.in` | `Password@123` | Monitor workforce capability health, critical skill deficits, and training ROI across departments. |
 
@@ -59,9 +59,9 @@
 ### 🎬 ACT 3: Official Learner Journey & Deterministic Adaptive Loop (3:30 - 6:00)
 * **Goal**: Demonstrate the core learner experience, evidence governance, and the adaptive test engine.
 * **Action**:
-  1. Login as **Official** (`officer@shikshasetu.gov.in` / `Password@123`).
+  1. Login as **Official** (`official@shikshasetu.gov.in` / `Password123!`).
   2. Arrive at **Official Dashboard** (`/dashboard`):
-     - Show **My Skill Gaps**: `STAT_SAMPLING` requires Level 4.0, currently 0.0/None.
+     - Show **My Skill Gaps**: `STAT_SAMPLING` requires Level 4.0, baseline 2.45 (Gap: 1.55, Critical).
      - Show **Recommended Learning**: Point to matched **iGOT Karmayogi** module (*Survey Sampling & Estimation Methods*).
   3. Click **Start Learning**:
      - Complete module progress.

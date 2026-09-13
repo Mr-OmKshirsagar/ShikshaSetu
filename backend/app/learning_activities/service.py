@@ -18,6 +18,28 @@ def _object_id(value: str) -> Optional[ObjectId]:
         return None
 
 
+def _resolve_competency_oid(database: Database, competency_identifier: Any) -> tuple[ObjectId, str]:
+    """
+    Resolves a competency identifier (which may be an ObjectId, a 24-hex string,
+    or a string code like 'STAT_SAMPLING' or 'BEH_ETHICS') into a canonical ObjectId
+    and string code.
+    """
+    raw_str = str(competency_identifier).strip()
+    if ObjectId.is_valid(raw_str):
+        oid = ObjectId(raw_str)
+        comp = database["competencies"].find_one({"_id": oid})
+        if comp:
+            return oid, comp.get("code", raw_str)
+        return oid, raw_str
+
+    cleaned = raw_str.upper()
+    comp = database["competencies"].find_one({"code": cleaned})
+    if comp:
+        return comp["_id"], comp.get("code", cleaned)
+
+    return ObjectId(), cleaned
+
+
 def _format_activity_for_response(document: dict) -> LearningActivityResponse:
     """Convert MongoDB document to response schema."""
     return LearningActivityResponse(
@@ -124,9 +146,12 @@ def complete_learning_activity(
         # Default: use progress as evidence score
         evidence_score = activity.get("progress_percent", 0)
     
+    comp_oid, comp_code = _resolve_competency_oid(database, activity["competency_id"])
+
     evidence_document = {
         "user_id": _object_id(user_id),
-        "competency_id": activity["competency_id"],
+        "competency_id": comp_oid,
+        "competency_code": comp_code,
         "type": "LEARNING_ACTIVITY",  # Supporting evidence only
         "score": evidence_score,
         "recorded_at": datetime.utcnow(),
@@ -147,7 +172,11 @@ def complete_learning_activity(
     
     current_profile = profiles_collection.find_one({
         "user_id": user_oid,
-        "competency_id": activity["competency_id"],
+        "$or": [
+            {"competency_id": comp_oid},
+            {"competency_id": activity["competency_id"]},
+            {"competency_id": comp_code},
+        ],
     })
     
     current_level = current_profile.get("current_level") if (current_profile and current_profile.get("current_level") is not None) else (current_profile.get("level", 0) if current_profile else 0)

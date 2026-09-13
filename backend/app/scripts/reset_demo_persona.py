@@ -34,6 +34,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("demo_reset")
 
 PRIMARY_DEMO_EMAIL = "official@shikshasetu.gov.in"
+TARGET_FULL_NAME = "Rajesh Sharma"
 TARGET_DEPARTMENT = "Ministry of Statistics & Programme Implementation (MoSPI)"
 TARGET_DESIGNATION = "Statistical Officer"
 TARGET_ROLE_CODE = "STATISTICAL_OFFICER"
@@ -105,6 +106,7 @@ def reset_demo_official(db: Database) -> dict:
     db.users.update_one(
         {"_id": user_oid},
         {"$set": {
+            "full_name": TARGET_FULL_NAME,
             "department": TARGET_DEPARTMENT,
             "designation": TARGET_DESIGNATION,
             "role_id": role_oid,
