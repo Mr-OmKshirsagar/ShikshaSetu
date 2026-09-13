@@ -1,0 +1,36 @@
+[
+  {
+    "total_requests": 534,
+    "successful_requests": 534,
+    "failed_requests": 0,
+    "error_pct": 0.0,
+    "rps": 8.98,
+    "p50_ms": 51.0,
+    "p90_ms": 500.0,
+    "p95_ms": 880.0,
+    "p99_ms": 4300.0,
+    "max_ms": 8115.5,
+    "users": 10,
+    "status": "STABLE",
+    "avg_cpu_pct": 13.8,
+    "max_cpu_pct": 22.5,
+    "avg_ram_pct": 55.8
+  },
+  {
+    "total_requests": 581,
+    "successful_requests": 581,
+    "failed_requests": 0,
+    "error_pct": 0.0,
+    "rps": 9.94,
+    "p50_ms": 420.0,
+    "p90_ms": 6200.0,
+    "p95_ms": 8500.0,
+    "p99_ms": 11000.0,
+    "max_ms": 13314.0,
+    "users": 25,
+    "status": "UNSTABLE",
+    "avg_cpu_pct": 11.7,
+    "max_cpu_pct": 25.4,
+    "avg_ram_pct": 56.3
+  }
+]

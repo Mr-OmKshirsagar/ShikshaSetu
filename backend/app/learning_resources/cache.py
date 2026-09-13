@@ -51,3 +51,10 @@ def invalidate_recommendations_cache(user_id: Optional[str] = None) -> None:
         invalidate_copilot_cache(user_id)
     except Exception:
         pass
+
+    try:
+        from app.core.analytics_cache import invalidate_user_cache, invalidate_admin_cache
+        invalidate_user_cache(user_id)
+        invalidate_admin_cache()
+    except Exception:
+        pass

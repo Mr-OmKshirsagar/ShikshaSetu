@@ -3,6 +3,10 @@ from fastapi import APIRouter, Depends, Request
 from app.auth.dependencies import get_current_user
 from app.competencies import service
 from app.competencies.schemas import CompetencyResponse, UserApplicableCompetencyResponse
+from app.core.analytics_cache import (
+    get_user_competencies_cache,
+    set_user_competencies_cache,
+)
 
 router = APIRouter(prefix="/competencies", tags=["competencies"])
 
@@ -17,10 +21,16 @@ def get_my_competencies(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ) -> list[dict]:
-    return service.list_user_competencies(
+    user_id = str(current_user["_id"])
+    cached = get_user_competencies_cache(user_id)
+    if cached is not None:
+        return cached
+    data = service.list_user_competencies(
         getattr(request.app.state, "database", None),
-        str(current_user["_id"]),
+        user_id,
     )
+    set_user_competencies_cache(user_id, data)
+    return data
 
 
 @router.get("/{competency_id}", response_model=CompetencyResponse)

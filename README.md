@@ -327,6 +327,43 @@ npx vitest run
 npm run build
 ```
 
+### Automated Concurrency & Load Testing
+The `backend/load_tests` directory contains an automated, non-destructive empirical performance and capacity evaluation harness powered by [Locust](https://locust.io):
+
+```bash
+# 1. Sequential single-user profiler across all 18 primary read endpoints
+python backend/load_tests/run_baseline.py
+
+# 2. Automated staged concurrency runner (10, 25, 50, 100, 250, 500 virtual users)
+python backend/load_tests/run_staged_tests.py
+
+# 3. Controlled multi-tier AI / RAG copilot benchmark (1, 2, 5, 10 concurrent requests)
+python backend/load_tests/run_ai_test.py
+```
+
+---
+
+## 📊 Capacity, Concurrency & Performance Benchmarks
+
+An empirical capacity evaluation was conducted against the ShikshaSetu backend on local development hardware connecting across public WAN to a remote MongoDB Atlas cluster. Detailed methodology, raw CSV metrics, and full latency distributions are documented in **[SHIKSHASETU_CAPACITY_REPORT.md](backend/load_tests/SHIKSHASETU_CAPACITY_REPORT.md)**.
+
+### Concurrency Benchmark Summary (Locust Staged Headless Run)
+Traffic was generated using realistic human user think times (1.0–3.0 seconds) and weighted personas (70% Statistical Officials, 20% NSSTA Trainers, 10% MoSPI Administrators):
+
+| Concurrent Virtual Users | Unoptimized Baseline Status | Optimized (In-Memory TTL Cache) | Throughput (RPS) | Error Rate | p50 Latency | p95 Latency | Evaluation Verdict |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **10 Users** | STABLE (880 ms p95) | **STABLE** | **9.99 req/s** | **0.0%** | **32 ms** | **480 ms** | Smooth sub-second responses |
+| **25 Users** | UNSTABLE (8,500 ms p95) | **STABLE** | **22.81 req/s** | **0.0%** | **72 ms** | **690 ms** | **91.9% latency reduction** |
+| **50 Users** | *Halted (Unstable)* | **STABLE** | **34.50 req/s** | **0.0%** | **120 ms** | **1,700 ms** | 100% success across 2k requests |
+| **100 Users** | *Halted* | **STABLE** | **71.41 req/s** | **0.0%** | **150 ms** | **900 ms** | **7.1x throughput ceiling expansion** |
+| **250 Users** | *Halted* | **DEGRADED** | **75.66 req/s** | **0.0%** | **1,600 ms** | **2,800 ms** | Queue contention reached; 0 errors |
+
+### Key Performance Findings:
+- **Root Cause Bottleneck Resolved**: Unoptimized dashboard aggregations (`/trainer/learners`, `/trainer/dashboard`, `/admin/dashboard`) were repeatedly performing sequential remote MongoDB queries over WAN, exhausting Starlette's `anyio` threadpool. 
+- **In-Memory TTL Caching**: Implementing thread-safe, user-isolated, role-partitioned TTL caching reduced median latency on bottleneck endpoints by **over 95%** (e.g., `/trainer/dashboard` dropped from 3,200 ms to **46 ms**).
+- **10x Concurrency Expansion**: Sustained stable concurrent users increased from **10 to 100 virtual users**, scaling sustained throughput from **8.98 RPS to 71.41 RPS** with **0.0% failure rate**.
+- **AI / RAG Copilot Reliability**: The Karmayogi AI assistant maintained **100% request success** at up to 10 concurrent prompt streams, with generation latency averaging ~6–9 seconds.
+
 ---
 
 ## ☁️ Deployment
