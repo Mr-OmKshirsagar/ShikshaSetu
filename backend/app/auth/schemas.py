@@ -16,7 +16,7 @@ def normalize_email(value: str) -> str:
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=200)
     role_id: str = Field(min_length=1)
     designation: str = Field(min_length=1, max_length=200)
@@ -48,7 +48,7 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=128)
 
     @field_validator("email", mode="before")
     @classmethod

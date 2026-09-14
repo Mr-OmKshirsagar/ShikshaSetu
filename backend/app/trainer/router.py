@@ -1,5 +1,8 @@
 """FastAPI router for Trainer Assessment Studio & Question Review."""
+import logging
 from typing import Annotated, Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
@@ -30,6 +33,15 @@ from app.trainer.schemas import (
     TrainerQuizCreateRequest,
     TrainerQuizResponse,
 )
+from app.core.analytics_cache import (
+    get_trainer_dashboard_cache,
+    set_trainer_dashboard_cache,
+    get_trainer_materials_cache,
+    set_trainer_materials_cache,
+    get_trainer_learners_cache,
+    set_trainer_learners_cache,
+    invalidate_trainer_cache,
+)
 from app.trainer.service import TrainerService, TrainerServiceError
 
 router = APIRouter(prefix="/trainer", tags=["trainer"])
@@ -57,8 +69,14 @@ def get_trainer_dashboard(
     current_user: CurrentTrainer,
 ) -> dict:
     """Retrieve aggregated trainer metrics and recent activity."""
+    trainer_id = str(current_user["_id"])
+    cached = get_trainer_dashboard_cache(trainer_id)
+    if cached is not None:
+        return cached
     service = _get_service(request)
-    return service.get_dashboard(str(current_user["_id"]))
+    data = service.get_dashboard(trainer_id)
+    set_trainer_dashboard_cache(trainer_id, data)
+    return data
 
 
 @router.get("/materials", response_model=list[TrainerMaterialResponse])
@@ -67,8 +85,14 @@ def list_trainer_materials(
     current_user: CurrentTrainer,
 ) -> list[dict]:
     """List all learning materials uploaded by the trainer with question counts."""
+    trainer_id = str(current_user["_id"])
+    cached = get_trainer_materials_cache(trainer_id)
+    if cached is not None:
+        return cached
     service = _get_service(request)
-    return service.list_materials(str(current_user["_id"]))
+    data = service.list_materials(trainer_id)
+    set_trainer_materials_cache(trainer_id, data)
+    return data
 
 
 @router.get("/materials/{material_id}", response_model=TrainerMaterialResponse)
@@ -134,10 +158,13 @@ def generate_questions_for_review(
         generator = MCQGenerator(llm_provider, retriever)
 
         # Generate questions
+        max_allowed = max(getattr(settings, "max_questions_per_generation", 20) or 20, 10)
+        target_count = min(payload.question_count, max_allowed)
+
         raw_questions = generator.generate_questions(
             query=payload.competency_code,
             competency_code=payload.competency_code,
-            question_count=min(payload.question_count, settings.max_questions_per_generation),
+            question_count=target_count,
             difficulty=payload.difficulty,
         )
 
@@ -160,13 +187,18 @@ def generate_questions_for_review(
             competency_code=payload.competency_code,
             questions=[q.dict() if hasattr(q, "dict") else q for q in valid_questions],
         )
+        invalidate_trainer_cache(trainer_id)
 
         return [service._format_question(q) for q in saved]
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Question generation failed: {str(e)}")
+        logger.exception("Question generation failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Question generation failed due to an internal server error. Please try again.",
+        )
 
 
 @router.get("/questions", response_model=list[TrainerQuestionResponse])
@@ -223,11 +255,13 @@ def edit_trainer_question(
     """Edit question content and transition review status to EDITED."""
     service = _get_service(request)
     try:
-        return service.edit_question(
+        updated = service.edit_question(
             trainer_id=str(current_user["_id"]),
             question_id=question_id,
             updates=payload.model_dump(exclude_unset=True),
         )
+        invalidate_trainer_cache(str(current_user["_id"]))
+        return updated
     except TrainerServiceError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -243,12 +277,14 @@ def approve_trainer_question(
     service = _get_service(request)
     notes = payload.review_notes if payload else None
     try:
-        return service.review_question(
+        res = service.review_question(
             trainer_id=str(current_user["_id"]),
             question_id=question_id,
             action="APPROVE",
             notes=notes,
         )
+        invalidate_trainer_cache(str(current_user["_id"]))
+        return res
     except TrainerServiceError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -264,12 +300,14 @@ def reject_trainer_question(
     service = _get_service(request)
     notes = payload.review_notes if payload else None
     try:
-        return service.review_question(
+        res = service.review_question(
             trainer_id=str(current_user["_id"]),
             question_id=question_id,
             action="REJECT",
             notes=notes,
         )
+        invalidate_trainer_cache(str(current_user["_id"]))
+        return res
     except TrainerServiceError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -290,7 +328,7 @@ def create_trainer_quiz(
     """
     service = _get_service(request)
     try:
-        return service.create_quiz_draft(
+        res = service.create_quiz_draft(
             trainer_id=str(current_user["_id"]),
             title=payload.title,
             description=payload.description,
@@ -298,6 +336,8 @@ def create_trainer_quiz(
             competency_code=payload.competency_code,
             question_ids=payload.question_ids,
         )
+        invalidate_trainer_cache(str(current_user["_id"]))
+        return res
     except TrainerServiceError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -335,7 +375,9 @@ def publish_trainer_quiz(
     """Publish a quiz draft to make it accessible to assigned learners."""
     service = _get_service(request)
     try:
-        return service.publish_quiz(str(current_user["_id"]), quiz_id)
+        res = service.publish_quiz(str(current_user["_id"]), quiz_id)
+        invalidate_trainer_cache(str(current_user["_id"]))
+        return res
     except TrainerServiceError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -350,11 +392,13 @@ def assign_trainer_quiz(
     """Assign a published quiz to one or more learners."""
     service = _get_service(request)
     try:
-        return service.assign_quiz(
+        res = service.assign_quiz(
             trainer_id=str(current_user["_id"]),
             quiz_id=quiz_id,
             learner_ids=payload.learner_ids,
         )
+        invalidate_trainer_cache(str(current_user["_id"]))
+        return res
     except TrainerServiceError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -383,8 +427,14 @@ def list_assigned_learners(
     current_user: CurrentTrainer,
 ) -> list[dict]:
     """List all learners assigned to trainer's quizzes with summary progress."""
+    trainer_id = str(current_user["_id"])
+    cached = get_trainer_learners_cache(trainer_id)
+    if cached is not None:
+        return cached
     service = _get_service(request)
-    return service.list_assigned_learners(str(current_user["_id"]))
+    data = service.list_assigned_learners(trainer_id)
+    set_trainer_learners_cache(trainer_id, data)
+    return data
 
 
 @router.get("/learners/{learner_id}/results")
@@ -411,7 +461,7 @@ def submit_learner_feedback(
     """Submit qualitative feedback and strengths/improvement notes on a learner's quiz attempt."""
     service = _get_service(request)
     try:
-        return service.submit_feedback(
+        res = service.submit_feedback(
             trainer_id=str(current_user["_id"]),
             attempt_id=attempt_id,
             feedback_text=payload.feedback_text,
@@ -419,5 +469,7 @@ def submit_learner_feedback(
             areas_for_improvement=payload.areas_for_improvement,
             rating=payload.rating,
         )
+        invalidate_trainer_cache(str(current_user["_id"]))
+        return res
     except TrainerServiceError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

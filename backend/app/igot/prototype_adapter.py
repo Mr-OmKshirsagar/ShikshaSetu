@@ -4,6 +4,7 @@ Uses the curated, verified iGOT courses already indexed in MongoDB (from igot_co
 Does not duplicate data, make fake external network calls, or fabricate unverified API responses.
 """
 
+import re
 from typing import List, Dict, Any, Optional
 from pymongo.database import Database
 from bson import ObjectId
@@ -44,7 +45,7 @@ class PrototypeIGOTAdapter(IGOTAdapter):
             query["competencies"] = competency_code.upper()
 
         if search_query:
-            query["title"] = {"$regex": search_query.strip(), "$options": "i"}
+            query["title"] = {"$regex": re.escape(search_query.strip()), "$options": "i"}
 
         cursor = (
             self.db.learning_resources.find(query)
@@ -86,6 +87,6 @@ class PrototypeIGOTAdapter(IGOTAdapter):
             query["competencies"] = competency_code.upper()
 
         if search_query:
-            query["title"] = {"$regex": search_query.strip(), "$options": "i"}
+            query["title"] = {"$regex": re.escape(search_query.strip()), "$options": "i"}
 
         return self.db.learning_resources.count_documents(query)

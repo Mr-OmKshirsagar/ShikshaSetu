@@ -238,18 +238,16 @@ def sync_role_requirements(
     database: Database, role_id: ObjectId, comp_map: dict[str, ObjectId]
 ) -> None:
     """
-    Step 3: Synchronize 8 role requirements for STATISTICAL_OFFICER with active competency IDs.
+    Step 3: Synchronize canonical role requirements for STATISTICAL_OFFICER with active competency IDs.
     """
     print("\n[3/11] Synchronizing Role Requirements...")
     requirements_spec = [
-        ("STAT_SAMPLING", 4, 1, 1.0),
-        ("STAT_SURVEY_DESIGN", 4, 1, 1.0),
-        ("STAT_DATA_QUALITY_FRAMEWORKS", 4, 1, 1.0),
-        ("TECH_PYTHON", 3, 2, 0.75),
-        ("TECH_SQL", 3, 2, 0.75),
-        ("TECH_DATA_VISUALIZATION", 3, 2, 0.75),
-        ("TECH_GIS", 2, 3, 0.50),
-        ("TECH_AI_ML", 2, 3, 0.50),
+        ("STAT_SAMPLING", 4.0, 1, 0.90),
+        ("STAT_SURVEY_DESIGN", 4.0, 1, 0.90),
+        ("STAT_DATA_QUALITY_FRAMEWORKS", 4.0, 1, 0.85),
+        ("TECH_PYTHON", 3.5, 2, 0.80),
+        ("TECH_DATA_VISUALIZATION", 3.5, 2, 0.75),
+        ("BEH_ETHICS", 4.0, 2, 0.80),
     ]
 
     now = datetime.now(UTC)
@@ -263,10 +261,12 @@ def sync_role_requirements(
         req_docs.append({
             "role_id": role_id,
             "competency_id": comp_id,
-            "required_level": req_level,
-            "priority": priority,
-            "importance": importance,
+            "competency_code": code,
+            "required_level": float(req_level),
+            "priority": int(priority),
+            "importance": float(importance),
             "framework_status": "prototype",
+            "mapping_status": "PROTOTYPE_CONFIGURED",
             "created_at": now,
             "updated_at": now,
         })
@@ -318,14 +318,15 @@ def sync_assessment_configurations(database: Database) -> None:
 
 def sync_question_bank(database: Database) -> None:
     """
-    Step 5: Synchronize 122 questions in question_bank with canonical codes.
+    Step 5: Synchronize questions in question_bank with canonical codes and grounded questions.
     """
     print("\n[5/11] Synchronizing Question Bank...")
     database.question_bank.delete_many({})
     res = seed_questions(database)
-    total_inserted = res.get("total_questions", database.question_bank.count_documents({})) if isinstance(res, dict) else database.question_bank.count_documents({})
-    by_comp = res.get("by_competency", {}) if isinstance(res, dict) else {}
-    print(f"  -> Seeded {total_inserted} questions across {len(by_comp)} competencies.")
+    from app.questions.seed_ethics_and_more import seed_ethics_and_more
+    res2 = seed_ethics_and_more(database)
+    total_inserted = database.question_bank.count_documents({})
+    print(f"  -> Seeded {total_inserted} questions across question bank.")
 
 
 def sync_learning_resources(database: Database, base_dir: Path) -> dict[str, ObjectId]:
@@ -443,13 +444,23 @@ def sync_learning_resource_mappings(
     if mappings:
         database.learning_resource_mappings.insert_many(mappings)
 
+    # Also ensure learning_resources.competencies arrays are populated from mappings
+    for m in mappings:
+        database.learning_resources.update_one(
+            {"_id": m["resource_id"]},
+            {"$addToSet": {"competencies": m["competency_code"]}}
+        )
+
     print(f"  -> Inserted {len(mappings)} learning resource mappings.")
 
 
-def sync_users(database: Database, default_role_id: ObjectId) -> None:
+def sync_users(
+    database: Database, default_role_id: ObjectId, comp_map: dict[str, ObjectId]
+) -> None:
     """
     Step 8: Resolve department-specific role_id for each user, migrate legacy access roles,
-    seed multi-department demo accounts, and safely reconcile user competency profiles.
+    seed multi-department demo accounts, seed the realistic initial capability profile for
+    the Primary Demo Official (MoSPI Statistical Officer), and safely reconcile profiles.
     """
     print("\n[8/11] Verifying & Preserving Users & Department Roles...")
     now = datetime.now(UTC)
@@ -465,9 +476,9 @@ def sync_users(database: Database, default_role_id: ObjectId) -> None:
     demo_accounts = [
         {
             "email": "official@shikshasetu.gov.in",
-            "full_name": "Demo Official (Statistical Officer)",
+            "full_name": "Rajesh Sharma",
             "designation": "Statistical Officer",
-            "department": "National Sample Survey Office (NSSO)",
+            "department": "Ministry of Statistics & Programme Implementation (MoSPI)",
             "employee_id": "DEMO-OFF-001",
             "access_role": "OFFICIAL",
             "status": "active",
@@ -485,7 +496,7 @@ def sync_users(database: Database, default_role_id: ObjectId) -> None:
             "email": "admin@shikshasetu.gov.in",
             "full_name": "Demo Administrator (MoSPI HQ)",
             "designation": "Director (Capability & Human Capital)",
-            "department": "Ministry of Statistics & Programme Implementation",
+            "department": "Ministry of Statistics & Programme Implementation (MoSPI)",
             "employee_id": "DEMO-ADM-001",
             "access_role": "ADMIN",
             "status": "active",
@@ -541,6 +552,7 @@ def sync_users(database: Database, default_role_id: ObjectId) -> None:
                     "designation": acc["designation"],
                     "department": acc["department"],
                     "status": "active",
+                    "password_hash": hash_password("Password123!"),
                     "updated_at": now,
                 }}
             )
@@ -555,9 +567,75 @@ def sync_users(database: Database, default_role_id: ObjectId) -> None:
         reconcile_user_competencies(database, u["_id"], user_role_id)
         reconciled_count += 1
 
+    # 4. Seed realistic baseline capability profile & authoritative evidence for Primary Demo Official (MoSPI Statistical Officer)
+    official_user = database.users.find_one({"email": "official@shikshasetu.gov.in"})
+    if official_user:
+        u_oid = official_user["_id"]
+        # Clear existing evidence for fresh honest baseline setup
+        database.competency_evidence.delete_many({"user_id": u_oid})
+
+        baseline_profile_specs = [
+            ("STAT_SAMPLING", 2.45, 0.75, "Baseline knowledge assessment (Sampling theory, stratification, PPS)"),
+            ("STAT_SURVEY_DESIGN", 3.00, 0.70, "Baseline evaluation (Questionnaire design & protocols)"),
+            ("STAT_DATA_QUALITY_FRAMEWORKS", 3.20, 0.70, "Baseline evaluation (NDQS data validation rules)"),
+            ("TECH_PYTHON", 2.80, 0.70, "Baseline evaluation (Pandas & data wrangling)"),
+            ("TECH_DATA_VISUALIZATION", 3.00, 0.70, "Baseline evaluation (Official charts & dashboards)"),
+            ("BEH_ETHICS", 3.50, 0.75, "Baseline evaluation (DoPT conduct rules & public integrity)"),
+        ]
+
+        for code, level, conf, desc in baseline_profile_specs:
+            c_oid = comp_map.get(code)
+            if not c_oid:
+                continue
+
+            # Upsert competency profile
+            database.competency_profiles.update_one(
+                {"user_id": u_oid, "competency_id": c_oid},
+                {
+                    "$set": {
+                        "user_id": u_oid,
+                        "competency_id": c_oid,
+                        "current_level": level,
+                        "level": level,
+                        "confidence": conf,
+                        "status": "active",
+                        "last_assessed_at": now,
+                        "updated_at": now,
+                    },
+                    "$setOnInsert": {"created_at": now},
+                },
+                upsert=True,
+            )
+
+            # Insert baseline authoritative evidence
+            database.competency_evidence.insert_one({
+                "user_id": u_oid,
+                "competency_id": c_oid,
+                "competency_code": code,
+                "evidence_type": "KNOWLEDGE_TEST",
+                "authority": "AUTHORITATIVE",
+                "score": level,
+                "confidence": conf,
+                "source_type": "PROTOTYPE",
+                "source_reference": "MoSPI Official Baseline Evaluation 2026",
+                "assessment_type": "BASELINE_ASSESSMENT",
+                "description": desc,
+                "status": "ACTIVE",
+                "recorded_at": now,
+                "created_at": now,
+                "updated_at": now,
+            })
+
+        # Invalidate recommendation cache so fresh recommendations are generated
+        try:
+            from app.learning_resources.cache import invalidate_recommendations_cache
+            invalidate_recommendations_cache(str(u_oid))
+        except Exception:
+            pass
+        print("  -> Seeded realistic initial capability profile & authoritative baseline evidence for Primary Demo Official (MoSPI).")
+
     total_users = database.users.count_documents({})
     print(f"  -> Total users: {total_users} (Reconciled department roles for {reconciled_count} users, migrated access_role: {res_access.modified_count}).")
-
 
 
 def sync_initial_assessment(
@@ -681,10 +759,12 @@ def main():
         sync_question_bank(database)
         res_map = sync_learning_resources(database, base_dir)
         sync_learning_resource_mappings(database, base_dir, res_map, comp_map)
-        sync_users(database, role_id)
+        sync_users(database, role_id, comp_map)
         sync_initial_assessment(database, comp_map)
         repair_competency_profiles(database, comp_map)
         repair_competency_evidence(database, comp_map)
+        from app.scripts.reseed_trainer_materials import reseed_trainer_materials
+        reseed_trainer_materials(database)
         from app.scripts.seed_demo_course_quizzes import sync_demo_quizzes
         sync_demo_quizzes(database)
 

@@ -50,20 +50,16 @@ class MockLLMProvider(LLMProvider):
         prompt: str,
         max_tokens: Optional[int] = None,
         temperature: float = 0.7,
-    ) -> dict:
+    ):
         """
         Generate mock JSON response.
-
-        Args:
-            prompt: The input prompt containing the request.
-            max_tokens: Maximum tokens (unused in mock).
-            temperature: Sampling temperature (unused in mock).
-
-        Returns:
-            A deterministic mock JSON response.
+        Returns a list of MCQ items if a batch is requested, or a single dict.
         """
-        # Return a mock MCQ response based on the prompt
-        return {
+        import re
+        match = re.search(r"exactly (\d+) questions", prompt)
+        count = int(match.group(1)) if match else 1
+
+        sample = {
             "question": "What is the primary purpose of the SQL SELECT statement?",
             "options": [
                 "To insert data into tables",
@@ -76,6 +72,16 @@ class MockLLMProvider(LLMProvider):
             "difficulty": "MEDIUM",
             "source_chunks": ["chunk_1", "chunk_2"]
         }
+
+        if count > 1:
+            return [
+                {
+                    **sample,
+                    "question": f"Question {i+1}: What is the primary purpose of the SQL SELECT statement?",
+                }
+                for i in range(count)
+            ]
+        return sample
 
     def is_available(self) -> bool:
         """

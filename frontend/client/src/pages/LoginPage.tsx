@@ -434,6 +434,109 @@ export default function LoginPage() {
                 ? "Already registered? Sign in"
                 : "New civil services employee? Create an account"}
             </button>
+
+            {/* Quick Demo Access Bar */}
+            {!isRegister && (
+              <div className="mt-6 border-t border-slate-100 pt-5">
+                <div className="mb-2.5 flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    QUICK DEMO ACCESS · SIH 2026
+                  </span>
+                  <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[9px] font-bold text-teal-700">
+                    One-Click
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      setEmail("official@shikshasetu.gov.in");
+                      setPassword("Password123!");
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await login("official@shikshasetu.gov.in", "Password123!");
+                      } catch (err: unknown) {
+                        setError(err instanceof Error ? err.message : "Login failed");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    className="flex flex-col items-start rounded-xl border border-teal-200/80 bg-teal-50/50 p-2.5 text-left transition hover:border-teal-400 hover:bg-teal-50 focus:outline-none"
+                  >
+                    <span className="text-[11px] font-bold text-teal-900">📊 Statistical Officer</span>
+                    <span className="text-[10px] text-teal-700">MoSPI · Primary Demo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      setEmail("trainer@shikshasetu.gov.in");
+                      setPassword("Password123!");
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await login("trainer@shikshasetu.gov.in", "Password123!");
+                      } catch (err: unknown) {
+                        setError(err instanceof Error ? err.message : "Login failed");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    className="flex flex-col items-start rounded-xl border border-blue-200/80 bg-blue-50/50 p-2.5 text-left transition hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
+                  >
+                    <span className="text-[11px] font-bold text-blue-900">🎓 NSSTA Trainer</span>
+                    <span className="text-[10px] text-blue-700">Training · AI Question Generation</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      setEmail("admin@shikshasetu.gov.in");
+                      setPassword("Password123!");
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await login("admin@shikshasetu.gov.in", "Password123!");
+                      } catch (err: unknown) {
+                        setError(err instanceof Error ? err.message : "Login failed");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    className="flex flex-col items-start rounded-xl border border-amber-200/80 bg-amber-50/50 p-2.5 text-left transition hover:border-amber-400 hover:bg-amber-50 focus:outline-none"
+                  >
+                    <span className="text-[11px] font-bold text-amber-900">🏛️ MoSPI Admin</span>
+                    <span className="text-[10px] text-amber-700">Workforce · Department Overview</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      setEmail("edu.officer@shikshasetu.gov.in");
+                      setPassword("Password123!");
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await login("edu.officer@shikshasetu.gov.in", "Password123!");
+                      } catch (err: unknown) {
+                        setError(err instanceof Error ? err.message : "Login failed");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    className="flex flex-col items-start rounded-xl border border-slate-200 bg-slate-50/50 p-2.5 text-left transition hover:border-slate-400 hover:bg-slate-100 focus:outline-none"
+                  >
+                    <span className="text-[11px] font-bold text-slate-800">📚 Education Officer</span>
+                    <span className="text-[10px] text-slate-600">MoE · Multi-Dept Demo</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

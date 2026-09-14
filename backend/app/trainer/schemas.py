@@ -86,7 +86,7 @@ class TrainerQuestionReviewRequest(BaseModel):
 class TrainerGenerateQuestionsRequest(BaseModel):
     """Request to trigger RAG question generation for a material."""
     competency_code: str = Field(..., description="Target competency code")
-    question_count: int = Field(default=5, ge=1, le=10)
+    question_count: int = Field(default=5, ge=1, le=20)
     difficulty: str = Field(default="MEDIUM", pattern="^(EASY|MEDIUM|HARD)$")
 
 

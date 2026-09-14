@@ -4,6 +4,17 @@ from pymongo.database import Database
 
 from app.admin import schemas, service
 from app.auth.dependencies import require_admin_role
+from app.core.analytics_cache import (
+    get_admin_dashboard_cache,
+    set_admin_dashboard_cache,
+    get_admin_workforce_cache,
+    set_admin_workforce_cache,
+    get_admin_competencies_cache,
+    set_admin_competencies_cache,
+    get_admin_skill_gaps_cache,
+    set_admin_skill_gaps_cache,
+    invalidate_admin_cache,
+)
 
 router = APIRouter(
     prefix="/admin",
@@ -31,8 +42,13 @@ def get_dashboard(
     request: Request,
     department: Optional[str] = Query(None, description="Filter metrics by department"),
 ) -> schemas.AdminDashboardResponse:
+    cached = get_admin_dashboard_cache(department)
+    if cached is not None:
+        return cached
     db = _get_db(request)
-    return service.get_admin_dashboard(db, department=department)
+    data = service.get_admin_dashboard(db, department=department)
+    set_admin_dashboard_cache(data, department)
+    return data
 
 
 @router.get(
@@ -44,8 +60,13 @@ def get_workforce(
     request: Request,
     department: Optional[str] = Query(None, description="Filter workforce by department"),
 ) -> schemas.WorkforceOverviewResponse:
+    cached = get_admin_workforce_cache(department)
+    if cached is not None:
+        return cached
     db = _get_db(request)
-    return service.get_workforce_overview(db, department=department)
+    data = service.get_workforce_overview(db, department=department)
+    set_admin_workforce_cache(data, department)
+    return data
 
 
 @router.get(
@@ -57,8 +78,13 @@ def get_competencies(
     request: Request,
     department: Optional[str] = Query(None, description="Filter competency analytics by department"),
 ) -> schemas.CompetencyAnalyticsResponse:
+    cached = get_admin_competencies_cache(department)
+    if cached is not None:
+        return cached
     db = _get_db(request)
-    return service.get_competency_analytics(db, department=department)
+    data = service.get_competency_analytics(db, department=department)
+    set_admin_competencies_cache(data, department)
+    return data
 
 
 @router.get(
@@ -70,8 +96,13 @@ def get_skill_gaps(
     request: Request,
     department: Optional[str] = Query(None, description="Filter skill gap analytics by department"),
 ) -> schemas.SkillGapAnalyticsResponse:
+    cached = get_admin_skill_gaps_cache(department)
+    if cached is not None:
+        return cached
     db = _get_db(request)
-    return service.get_skill_gap_analytics(db, department=department)
+    data = service.get_skill_gap_analytics(db, department=department)
+    set_admin_skill_gaps_cache(data, department)
+    return data
 
 
 @router.get(
@@ -172,7 +203,9 @@ def promote_user_to_trainer(
     user_id: str,
 ) -> schemas.AdminUserItem:
     db = _get_db(request)
-    return service.promote_user_to_trainer(db, user_id)
+    result = service.promote_user_to_trainer(db, user_id)
+    invalidate_admin_cache()
+    return result
 
 
 @router.post(
@@ -186,7 +219,9 @@ def assign_user_role(
     payload: schemas.AdminAssignRoleRequest,
 ) -> schemas.AdminUserItem:
     db = _get_db(request)
-    return service.assign_user_role(db, user_id, payload)
+    result = service.assign_user_role(db, user_id, payload)
+    invalidate_admin_cache()
+    return result
 
 
 

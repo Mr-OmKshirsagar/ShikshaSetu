@@ -7,6 +7,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.schemas import AccessRole, LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.auth.security import create_access_token, hash_password, verify_password
 from app.core.config import get_settings
+from app.core.limiter import limiter
 from app.users import repository
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -27,6 +28,7 @@ def database_or_error(request: Request):
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 def register(request: Request, payload: RegisterRequest) -> dict:
     database = database_or_error(request)
     from app.roles.resolver import resolve_role_for_user, reconcile_user_competencies
@@ -84,6 +86,7 @@ def register(request: Request, payload: RegisterRequest) -> dict:
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 def login(request: Request, payload: LoginRequest) -> dict:
     database = database_or_error(request)
     user = repository.get_user_by_email(database, str(payload.email))

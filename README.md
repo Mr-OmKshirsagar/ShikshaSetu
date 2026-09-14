@@ -46,6 +46,31 @@ The platform bridges training needs and learning outcomes using AI-assisted curr
 
 ---
 
+## 👥 Demo Personas & Instant Quick-Login
+
+The authentication screen (`/login`) features **one-click Quick Demo Access** buttons for immediate evaluation across all roles without typing credentials manually:
+
+| Role | Persona | Email | Password | Ministry / Department | Primary Demonstration Flow |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Official (Primary)** | **Rajesh Sharma** | `official@shikshasetu.gov.in` | `Password123!` | Ministry of Statistics & PI (MoSPI) · Statistical Officer | Review capability profile, address `STAT_SAMPLING` critical gap (2.45 / 4.0), explore grounded iGOT/NSSTA recommendations, take adaptive assessments |
+| **Trainer** | **Dr. Ananya Verma** | `trainer@shikshasetu.gov.in` | `Password123!` | National Statistical Systems Training Academy (NSSTA) | Upload course curriculum (PDF/DOCX), generate grounded AI MCQs, review/approve question bank items, publish quizzes |
+| **Admin** | **System Administrator** | `admin@shikshasetu.gov.in` | `Password123!` | Ministry of Statistics & PI (MoSPI HQ) | Executive workforce capability dashboard, department-wide skill gap analytics, training effectiveness, and capacity planning |
+
+#### 🏛️ Multi-Department Demonstration Accounts
+| Role | Email | Password | Ministry / Department | Professional Role |
+| :--- | :--- | :--- | :--- | :--- |
+| **Education Officer** | `edu.officer@shikshasetu.gov.in` | `Password123!` | Ministry of Education (MoE) | Teacher / Curriculum Designer |
+| **Informatics Officer** | `meity.officer@shikshasetu.gov.in` | `Password123!` | Ministry of Electronics & IT (MeitY) | Digital Governance Architect |
+| **Finance Officer** | `finance.officer@shikshasetu.gov.in` | `Password123!` | Ministry of Finance (MoF) | Public Financial Management Officer |
+
+> 🔄 **Idempotent Demo Reset**: Before or after any live demonstration, instantly restore the primary official persona back to the exact golden baseline (`STAT_SAMPLING = 2.45 / 4.00`, 0 rehearsal attempts):
+> ```bash
+> cd backend
+> python -m app.scripts.reset_demo_persona
+> ```
+
+---
+
 ## 🌐 Application URL Architecture
 
 ShikshaSetu employs clean, RESTful client-side routing with role-based access control (RBAC) and automatic route guarding:
@@ -183,28 +208,34 @@ ShikshaSetu/
 
 ### 1. Backend Setup
 
-1. Open a terminal and navigate to the `backend` folder:
+1. Open a terminal and activate the virtual environment:
+
+   **Windows (PowerShell)**:
+   ```powershell
+   # If from the repository root (recommended):
+   .venv\Scripts\Activate.ps1
+   cd backend
+
+   # OR if already inside the backend folder:
+   ..\.venv\Scripts\Activate.ps1
+   ```
+
+   **Linux / macOS**:
    ```bash
+   # From repository root:
+   source .venv/bin/activate
    cd backend
    ```
 
-2. Create and activate a virtual environment:
+   *(If creating a fresh virtual environment from scratch)*:
    ```bash
-   # Windows (PowerShell)
+   cd backend
    python -m venv .venv
-   .venv\Scripts\Activate.ps1
-
-   # Linux / macOS
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-
-3. Install Python dependencies:
-   ```bash
+   # Windows: .venv\Scripts\Activate.ps1 | Linux: source .venv/bin/activate
    pip install -r requirements.txt
    ```
 
-4. Configure environment variables:
+2. Configure environment variables (if not already set up):
    ```bash
    # Copy example environment configuration
    cp .env.example .env
@@ -224,20 +255,28 @@ ShikshaSetu/
    GEMINI_API_KEY=your-google-gemini-api-key   # Optional for AI features
    ```
 
-5. Seed Master Data:
+3. Seed Master Data:
    Initialize the database with 42 canonical competencies, NSSTA & iGOT course catalogs, sample questions, and demo roles:
    ```bash
    python -m app.scripts.seed_master
    ```
 
-6. Start the FastAPI development server:
+   *(Optional)* Reset the primary demo official (`official@shikshasetu.gov.in` / Rajesh Sharma) to the exact golden baseline:
    ```bash
-   uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   python -m app.scripts.reset_demo_persona
+   ```
+
+4. Start the FastAPI development server:
+   ```bash
+   # From the backend directory
+   python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
    ```
 
    - **API Base**: `http://127.0.0.1:8000/api/v1`
    - **Interactive API Docs (Swagger)**: `http://127.0.0.1:8000/docs`
    - **Health Check**: `http://127.0.0.1:8000/api/v1/health`
+
+   > 💡 **Troubleshooting Port 8000**: If you encounter `[WinError 10013]` or address already in use, verify if another process is listening on port 8000 (`Get-NetTCPConnection -LocalPort 8000` on Windows or `lsof -i :8000` on Linux/macOS) and terminate the stale process.
 
 ---
 
@@ -273,12 +312,57 @@ cd backend
 pytest -v
 ```
 
-### Frontend TypeScript Verification
-Verify type safety and validate that all components and route hooks adhere to strict TypeScript checks:
+### Frontend Verification & Tests
+Verify type safety, run unit tests, and validate the production bundle:
 ```bash
 cd frontend
+
+# TypeScript strict type check
 npm run check
+
+# Vitest unit & regression tests
+npx vitest run
+
+# Production build verification
+npm run build
 ```
+
+### Automated Concurrency & Load Testing
+The `backend/load_tests` directory contains an automated, non-destructive empirical performance and capacity evaluation harness powered by [Locust](https://locust.io):
+
+```bash
+# 1. Sequential single-user profiler across all 18 primary read endpoints
+python backend/load_tests/run_baseline.py
+
+# 2. Automated staged concurrency runner (10, 25, 50, 100, 250, 500 virtual users)
+python backend/load_tests/run_staged_tests.py
+
+# 3. Controlled multi-tier AI / RAG copilot benchmark (1, 2, 5, 10 concurrent requests)
+python backend/load_tests/run_ai_test.py
+```
+
+---
+
+## 📊 Capacity, Concurrency & Performance Benchmarks
+
+An empirical capacity evaluation was conducted against the ShikshaSetu backend on local development hardware connecting across public WAN to a remote MongoDB Atlas cluster. Detailed methodology, raw CSV metrics, and full latency distributions are documented in **[SHIKSHASETU_CAPACITY_REPORT.md](backend/load_tests/SHIKSHASETU_CAPACITY_REPORT.md)**.
+
+### Concurrency Benchmark Summary (Locust Staged Headless Run)
+Traffic was generated using realistic human user think times (1.0–3.0 seconds) and weighted personas (70% Statistical Officials, 20% NSSTA Trainers, 10% MoSPI Administrators):
+
+| Concurrent Virtual Users | Unoptimized Baseline Status | Optimized (In-Memory TTL Cache) | Throughput (RPS) | Error Rate | p50 Latency | p95 Latency | Evaluation Verdict |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **10 Users** | STABLE (880 ms p95) | **STABLE** | **9.99 req/s** | **0.0%** | **32 ms** | **480 ms** | Smooth sub-second responses |
+| **25 Users** | UNSTABLE (8,500 ms p95) | **STABLE** | **22.81 req/s** | **0.0%** | **72 ms** | **690 ms** | **91.9% latency reduction** |
+| **50 Users** | *Halted (Unstable)* | **STABLE** | **34.50 req/s** | **0.0%** | **120 ms** | **1,700 ms** | 100% success across 2k requests |
+| **100 Users** | *Halted* | **STABLE** | **71.41 req/s** | **0.0%** | **150 ms** | **900 ms** | **7.1x throughput ceiling expansion** |
+| **250 Users** | *Halted* | **DEGRADED** | **75.66 req/s** | **0.0%** | **1,600 ms** | **2,800 ms** | Queue contention reached; 0 errors |
+
+### Key Performance Findings:
+- **Root Cause Bottleneck Resolved**: Unoptimized dashboard aggregations (`/trainer/learners`, `/trainer/dashboard`, `/admin/dashboard`) were repeatedly performing sequential remote MongoDB queries over WAN, exhausting Starlette's `anyio` threadpool. 
+- **In-Memory TTL Caching**: Implementing thread-safe, user-isolated, role-partitioned TTL caching reduced median latency on bottleneck endpoints by **over 95%** (e.g., `/trainer/dashboard` dropped from 3,200 ms to **46 ms**).
+- **10x Concurrency Expansion**: Sustained stable concurrent users increased from **10 to 100 virtual users**, scaling sustained throughput from **8.98 RPS to 71.41 RPS** with **0.0% failure rate**.
+- **AI / RAG Copilot Reliability**: The Karmayogi AI assistant maintained **100% request success** at up to 10 concurrent prompt streams, with generation latency averaging ~6–9 seconds.
 
 ---
 

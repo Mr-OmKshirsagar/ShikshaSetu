@@ -161,7 +161,7 @@ export type Recommendation = {
   resource_type: string;
   resource_title: string;
   title?: string;
-  resource?: string;
+  resource?: string | { resource_id?: string; title?: string; provider?: string; [key: string]: any };
   resource_url: string;
   provider: string;
   duration_hours: number | null;
