@@ -3,9 +3,11 @@ import { Save, UserRound, Briefcase, GraduationCap, Award } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 
 export function TrainerProfile() {
   const { user, updateUser } = useAuth();
+  const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
 
   const [fullName, setFullName] = useState(user?.full_name || "");
@@ -28,7 +30,7 @@ export function TrainerProfile() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim()) { toast.error("Full name is required."); return; }
+    if (!fullName.trim()) { toast.error(t("common.fullNameRequired")); return; }
     try {
       setSaving(true);
       const payload: Record<string, string> = {};
@@ -40,9 +42,9 @@ export function TrainerProfile() {
       if (currentAssignment.trim()) payload.current_assignment = currentAssignment.trim();
       const updated = await api.auth.updateProfile(payload);
       updateUser(updated);
-      toast.success("Profile saved.");
+      toast.success(t("common.profileSaved"));
     } catch (err: any) {
-      toast.error(err.message || "Failed to save profile.");
+      toast.error(err.message || t("common.profileSaveFailed"));
     } finally {
       setSaving(false);
     }

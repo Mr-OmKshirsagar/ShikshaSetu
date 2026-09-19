@@ -50,13 +50,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.database = database
             logger.info("MongoDB client initialized")
 
-            # Build in-memory embedding indexes for all READY materials (P0 upgrade)
+            # Build in-memory embedding indexes — LAZY background task,
+            # does NOT block application ready state.
+            # If the corpus grows large this will run in the background only.
             try:
                 from app.rag.embedding_index import EmbeddingIndexManager
-                indexed = EmbeddingIndexManager.get_instance().load_all_ready_materials(database)
-                logger.info("RAG embedding index: loaded %d material(s)", indexed)
+                import threading
+
+                def _lazy_rag_init(db):
+                    try:
+                        indexed = EmbeddingIndexManager.get_instance().load_all_ready_materials(db)
+                        logger.info("RAG embedding index: loaded %d material(s) (background)", indexed)
+                    except Exception:
+                        logger.exception("RAG embedding index background load failed (non-fatal)")
+
+                t = threading.Thread(target=_lazy_rag_init, args=(database,), daemon=True, name="rag-index-loader")
+                t.start()
+                logger.info("RAG embedding index: lazy background load started")
             except Exception:
-                logger.exception("RAG embedding index startup load failed (non-fatal)")
+                logger.exception("RAG embedding index startup init failed (non-fatal)")
 
         except Exception:
             logger.exception("MongoDB client initialization failed")

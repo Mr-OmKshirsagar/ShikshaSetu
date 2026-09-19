@@ -10,6 +10,7 @@ import { TrainerLayout } from "./layouts/TrainerLayout";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { OfficialLayout } from "./layouts/OfficialLayout";
 import { PageSkeleton } from "./components/PageSkeleton";
+import { ShikshaSetuLogo } from "./components/brand/ShikshaSetuLogo";
 
 // ─── Lazy Loaded Pages ─────────────────────────────────────────────────────────
 
@@ -108,8 +109,8 @@ function LoadingScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#eef4f8]">
       <div className="text-center animate-fadeIn">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center">
-          <img src="/shikshasetu-icon.svg" alt="ShikshaSetu" className="h-16 w-16" />
+        <div className="mx-auto mb-4 flex items-center justify-center">
+          <ShikshaSetuLogo variant="full" size="md" priority />
         </div>
         <div className="text-sm font-bold text-[#123057]">Loading ShikshaSetu…</div>
         <div className="mt-2 text-xs text-slate-400">Optimizing capability intelligence</div>

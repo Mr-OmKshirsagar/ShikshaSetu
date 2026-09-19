@@ -12,6 +12,7 @@ import {
 import { api, clearApiCache, SkillGapAnalyticsResponse, OrganizationGapItem } from "@/lib/api";
 import { DEPARTMENT_TAXONOMY } from "@/lib/departments";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal } from "@/components/motion/MotionUtils";
 
 interface SkillGapAnalyticsProps {
@@ -19,6 +20,7 @@ interface SkillGapAnalyticsProps {
 }
 
 export function SkillGapAnalytics({ onNavigate }: SkillGapAnalyticsProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<SkillGapAnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPriority, setSelectedPriority] = useState("ALL");
@@ -53,7 +55,7 @@ export function SkillGapAnalytics({ onNavigate }: SkillGapAnalyticsProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-            Organization-Wide Skill Gap Analytics
+            {t("adminPages.skillGapTitle")}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Aggregated capability deficits prioritized by administrative role impact and deficit size.

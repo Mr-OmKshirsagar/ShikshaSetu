@@ -73,3 +73,80 @@ def ensure_framework_indexes(database: Database) -> None:
         )
     except Exception as exc:
         logger.warning("Could not create text index on document_chunks: %s", exc)
+
+    # ── Adaptive Assessment / Question Bank indexes ───────────────────────────
+
+    # question_bank: every _select_next_question call filters by competency_code + status
+    database.question_bank.create_index(
+        [("competency_code", ASCENDING), ("status", ASCENDING)],
+        name="ix_qb_competency_status",
+    )
+    # question_bank: also filter by difficulty within a competency
+    database.question_bank.create_index(
+        [("competency_code", ASCENDING), ("status", ASCENDING), ("difficulty", ASCENDING)],
+        name="ix_qb_competency_status_difficulty",
+    )
+
+    # ── RAG Dataset collections indexes ──────────────────────────────────────
+
+    # rag_glossary: fast term lookup
+    try:
+        database.rag_glossary.create_index([("term", ASCENDING)], unique=True, name="uq_glossary_term")
+        database.rag_glossary.create_index([("domain", ASCENDING)], name="ix_glossary_domain")
+        database.rag_glossary.create_index(
+            [("term", TEXT), ("definition", TEXT)],
+            name="ix_glossary_fulltext",
+            default_language="english",
+        )
+    except Exception as exc:
+        logger.warning("Could not create glossary indexes: %s", exc)
+
+    # rag_synonyms: canonical term lookup + alias search
+    try:
+        database.rag_synonyms.create_index(
+            [("canonical_term", ASCENDING)], unique=True, name="uq_synonym_canonical"
+        )
+    except Exception as exc:
+        logger.warning("Could not create synonym indexes: %s", exc)
+
+    # rag_eval_set: golden Q&A
+    try:
+        database.rag_eval_set.create_index([("query_type", ASCENDING)], name="ix_eval_qtype")
+        database.rag_eval_set.create_index([("difficulty", ASCENDING)], name="ix_eval_difficulty")
+    except Exception as exc:
+        logger.warning("Could not create eval set indexes: %s", exc)
+
+    # rag_refusal_set: out-of-scope test
+    try:
+        database.rag_refusal_set.create_index(
+            [("expected_behavior", ASCENDING)], name="ix_refusal_behavior"
+        )
+    except Exception as exc:
+        logger.warning("Could not create refusal set indexes: %s", exc)
+
+    # rag_feedback: append-only feedback log
+    try:
+        database.rag_feedback.create_index([("session_id", ASCENDING)], name="ix_feedback_session")
+        database.rag_feedback.create_index([("timestamp", ASCENDING)], name="ix_feedback_ts")
+        database.rag_feedback.create_index([("resolved", ASCENDING)], name="ix_feedback_resolved")
+    except Exception as exc:
+        logger.warning("Could not create feedback indexes: %s", exc)
+
+    # rag_entity_registry: entity lookup
+    try:
+        database.rag_entity_registry.create_index(
+            [("entity_name", ASCENDING)], name="ix_entity_name"
+        )
+        database.rag_entity_registry.create_index(
+            [("entity_type", ASCENDING)], name="ix_entity_type"
+        )
+    except Exception as exc:
+        logger.warning("Could not create entity registry indexes: %s", exc)
+
+    # rag_terminology_hi_en: bilingual lookup
+    try:
+        database.rag_terminology_hi_en.create_index(
+            [("term_en", ASCENDING)], unique=True, name="uq_term_en"
+        )
+    except Exception as exc:
+        logger.warning("Could not create terminology indexes: %s", exc)

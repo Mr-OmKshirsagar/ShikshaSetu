@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/client/public/assets/shikshasetu-logo.png" alt="ShikshaSetu" width="320" />
+</p>
+
 # 🏛️ ShikshaSetu (शिक्षासेतु)
 ### AI-Powered Capability Intelligence & Civil Services Competency Platform
 

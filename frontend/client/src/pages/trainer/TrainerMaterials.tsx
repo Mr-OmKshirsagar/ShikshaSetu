@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { api, clearApiCache, LearningMaterial } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { StatusTransition, AnimatedSection } from "@/components/motion/MotionUtils";
 
 interface TrainerMaterialsProps {
@@ -33,6 +34,7 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   const fetchMaterials = async () => {
     clearApiCache();
@@ -41,7 +43,7 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
       const list = await api.trainer.materials.list();
       setMaterials(list);
     } catch (err: any) {
-      toast.error(err.message || "Failed to load materials");
+      toast.error(err.message || t("materials.noMaterials"));
     } finally {
       setLoading(false);
     }
@@ -74,12 +76,12 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
     const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
 
     if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
-      toast.error("Invalid file format. Please upload PDF, DOCX, or TXT documents.");
+      toast.error(t("materials.invalidFormat"));
       return;
     }
 
     if (file.size > 25 * 1024 * 1024) {
-      toast.error("File size exceeds 25MB limit.");
+      toast.error(t("materials.sizeLimit"));
       return;
     }
 
@@ -89,19 +91,19 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
-      toast.error("Please select a file to upload.");
+      toast.error(t("materials.selectFile"));
       return;
     }
 
     try {
       setUploading(true);
       await api.trainer.materials.upload(selectedFile);
-      toast.success(`"${selectedFile.name}" uploaded successfully! Chunks extracted.`);
+      toast.success(`"${selectedFile.name}" ${t("materials.uploadSuccess")}`);
       setSelectedFile(null);
       setUploadModalOpen(false);
       fetchMaterials();
     } catch (err: any) {
-      toast.error(err.message || "Upload failed");
+      toast.error(err.message || t("materials.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -120,9 +122,9 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
       {/* Top action header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">Learning Materials Library</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("materials.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Curriculum content repositories used for grounded AI question generation.
+            {t("materials.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -132,14 +134,14 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
             title="Refresh list"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            Refresh
+            {t("common.refresh")}
           </button>
           <button
             onClick={() => setUploadModalOpen(true)}
             className="flex items-center gap-2 rounded-xl bg-[#ef7e37] px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-[#d96a27] btn-interactive"
           >
             <FilePlus size={16} />
-            Upload New Material
+            {t("materials.upload")}
           </button>
         </div>
       </div>
@@ -151,7 +153,7 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search materials by title or filename..."
+          placeholder={t("materials.searchPlaceholder")}
           className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
         />
         {searchQuery && (
@@ -159,7 +161,7 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
             onClick={() => setSearchQuery("")}
             className="text-xs text-slate-400 hover:text-slate-600 mr-2 btn-interactive"
           >
-            Clear
+            {t("common.cancel")}
           </button>
         )}
       </div>
@@ -179,17 +181,17 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-[#ef7e37]">
             <BookOpen size={24} />
           </div>
-          <h3 className="mt-4 text-base font-bold text-slate-800">No learning materials found</h3>
+          <h3 className="mt-4 text-base font-bold text-slate-800">{t("materials.noMaterials")}</h3>
           <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
             {searchQuery
-              ? "No materials matched your search query."
-              : "Upload government curriculum documents (PDF, DOCX, TXT) to start generating AI assessments."}
+              ? t("materials.noSearchResults")
+              : t("materials.uploadPrompt")}
           </p>
           <button
             onClick={() => setUploadModalOpen(true)}
             className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#ef7e37] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#d96a27] btn-interactive"
           >
-            <Upload size={14} /> Upload First Document
+            <Upload size={14} /> {t("materials.uploadFirst")}
           </button>
         </div>
       ) : (
@@ -212,21 +214,21 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
                         <FileText size={16} />
                       </div>
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                        Document
+                        {t("materials.document")}
                       </span>
                     </div>
 
                     {isReady ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 anim-badge-pop">
-                        <CheckCircle size={12} /> Ready
+                        <CheckCircle size={12} /> {t("materials.ready")}
                       </span>
                     ) : isProcessing ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700 anim-badge-pop">
-                        <Clock size={12} className="animate-spin" /> Processing
+                        <Clock size={12} className="animate-spin" /> {t("materials.processing")}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-bold text-rose-700 anim-badge-pop">
-                        <AlertCircle size={12} /> Failed
+                        <AlertCircle size={12} /> {t("materials.failed")}
                       </span>
                     )}
                   </div>
@@ -242,13 +244,13 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
                   <div className="mt-4 flex items-center gap-4 text-xs font-semibold text-slate-400">
                     <span className="flex items-center gap-1">
                       <Layers size={13} className="text-slate-400" />
-                      {mat.chunk_count || 0} chunks
+                      {mat.chunk_count || 0} {t("materials.chunks")}
                     </span>
                     <span>·</span>
                     <span>
                       {mat.created_at
                         ? new Date(mat.created_at).toLocaleDateString()
-                        : "Recent"}
+                        : t("materials.recent")}
                     </span>
                   </div>
                 </div>
@@ -262,7 +264,7 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
                     disabled={!isReady}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-50 px-3 py-2 text-xs font-bold text-[#c2510e] hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed btn-interactive"
                   >
-                    <FileQuestion size={14} /> Generate MCQs
+                    <FileQuestion size={14} /> {t("materials.generateMcqs")}
                   </button>
 
                   <button
@@ -272,7 +274,7 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
                     className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 btn-interactive"
                     title="View all questions generated from this material"
                   >
-                    Questions →
+                    {t("materials.questions")}
                   </button>
                 </div>
               </div>
@@ -288,10 +290,10 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg font-extrabold text-slate-800">
-                  Upload Learning Content
+                  {t("materials.uploadTitle")}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Upload official public-service curriculum documents
+                  {t("materials.uploadSubtitle")}
                 </p>
               </div>
               <button
@@ -341,11 +343,11 @@ export function TrainerMaterials({ onNavigate }: TrainerMaterialsProps) {
                 ) : (
                   <div className="mt-3">
                     <p className="text-sm font-bold text-slate-700">
-                      Drag and drop your file here, or{" "}
-                      <span className="text-[#ef7e37]">browse</span>
+                      {t("materials.dropPrompt")} {" "}
+                      <span className="text-[#ef7e37]">{t("materials.browse")}</span>
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
-                      Supports PDF, DOCX, and TXT up to 25MB
+                      {t("materials.supported")}
                     </p>
                   </div>
                 )}

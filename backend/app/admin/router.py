@@ -224,3 +224,77 @@ def assign_user_role(
     return result
 
 
+
+
+# ─── RAG Admin Endpoints ──────────────────────────────────────────────────────
+
+@router.post("/rag/seed-datasets")
+def seed_rag_datasets(
+    request: Request,
+    overwrite: bool = False,
+) -> dict:
+    """Seed all RAG datasets (Glossary, Synonyms, Eval Set, Refusal Set)."""
+    db = _get_db(request)
+    try:
+        from app.rag.datasets.seed_all import seed_all
+        results = seed_all(db, overwrite=overwrite)
+        return {"status": "ok", "results": results}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Seed failed: {exc}")
+
+
+@router.post("/rag/run-evaluation")
+def run_rag_evaluation(request: Request) -> dict:
+    """Run routing + refusal evaluation against seeded test sets."""
+    db = _get_db(request)
+    try:
+        from app.rag.evaluation.runner import run_full_eval
+        report = run_full_eval(db)
+        return {
+            "status": "ok",
+            "routing_accuracy": report.routing_accuracy,
+            "refusal_accuracy": report.refusal_accuracy,
+            "total_eval_queries": report.total_eval,
+            "routing_correct": report.routing_correct,
+            "refusal_total": report.refusal_total,
+            "refusal_correct": report.refusal_correct,
+            "avg_latency_ms": report.avg_latency_ms,
+            "routing_failures": [
+                {"eval_id": r.eval_id, "query": r.query[:80],
+                 "expected": r.expected_intent, "got": r.actual_intent}
+                for r in report.eval_results if not r.routing_correct
+            ],
+            "refusal_failures": [
+                {"test_id": r.test_id, "query": r.query[:80], "reason": r.failure_reason}
+                for r in report.refusal_results if not r.passed
+            ],
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Evaluation failed: {exc}")
+
+
+@router.post("/rag/reembed-materials")
+def reembed_materials(request: Request) -> dict:
+    """Re-embed all PENDING/FAILED document chunks using Gemini."""
+    db = _get_db(request)
+    settings = getattr(request.app.state, "settings", None)
+    if not settings:
+        from app.core.config import get_settings
+        settings = get_settings()
+
+    try:
+        from app.scripts.migrate_embed_backfill import run_backfill
+        import threading
+
+        def _bg():
+            try:
+                run_backfill()
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning("Background reembed failed: %s", exc)
+
+        t = threading.Thread(target=_bg, daemon=True, name="bg-reembed")
+        t.start()
+        return {"status": "started", "message": "Re-embedding running in background"}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Reembed trigger failed: {exc}")

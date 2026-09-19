@@ -32,7 +32,10 @@ describe("Phase 3D — i18n Localization Foundation", () => {
     expect(hi.nav.skillGaps).toBe("कौशल अंतराल");
     expect(hi.nav.evidence).toContain("साक्ष्य बही");
     expect(hi.assessments.title).toBe("अनुकूली क्षमता आकलन");
-    expect(hi.assistant.title).toBe("कर्मयोगी एआई सह-पायलट");
+    expect(hi.assistant.title).toBe("शिक्षासेतु एआई सहायक");
+    expect(en.quizzes.assigned).toBe("Assigned Quizzes");
+    expect(en.skillGaps.intelligenceTitle).toBe("Skill Gap Intelligence");
+    expect(en.skillGaps.roleRequirements).toBe("Role Requirements");
   });
 
   it("should never translate internal competency codes or backend database enums", () => {
@@ -51,5 +54,16 @@ describe("Phase 3D — i18n Localization Foundation", () => {
       // Dictionaries must not mutate these internal keys
       expect(typeof code).toBe("string");
     }
+  });
+
+  it("should guarantee zero internal raw key leakage with human-readable fallbacks", () => {
+    // Both en and hi must provide actual translations for critical UI pages
+    expect(en.skillGaps.intelligenceTitle).not.toContain("skillGaps.");
+    expect(en.skillGaps.roleRequirements).not.toContain("skillGaps.");
+    expect(en.quizzes.assigned).not.toContain("quizzes.");
+
+    expect(hi.skillGaps.intelligenceTitle).not.toContain("skillGaps.");
+    expect(hi.skillGaps.roleRequirements).not.toContain("skillGaps.");
+    expect(hi.quizzes.assigned).not.toContain("quizzes.");
   });
 });

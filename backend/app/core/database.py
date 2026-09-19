@@ -1,6 +1,7 @@
 import logging
 import time
 
+import certifi
 from pymongo import MongoClient
 from pymongo.database import Database
 
@@ -18,6 +19,7 @@ def initialize_database(uri: str, database_name: str) -> tuple[MongoClient, Data
     # Use generous timeouts; Atlas SRV DNS + TLS handshake can be slow on first connect
     client = MongoClient(
         uri,
+        tlsCAFile=certifi.where(),
         serverSelectionTimeoutMS=30000,
         connectTimeoutMS=20000,
         socketTimeoutMS=30000,

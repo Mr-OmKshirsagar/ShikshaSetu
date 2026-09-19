@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { api, clearApiCache, AdminReportsResponse } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal } from "@/components/motion/MotionUtils";
 
 interface AdminReportsProps {
@@ -16,6 +17,7 @@ interface AdminReportsProps {
 }
 
 export function AdminReports({ onNavigate }: AdminReportsProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<AdminReportsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportingReport, setExportingReport] = useState<string | null>(null);
@@ -136,7 +138,7 @@ export function AdminReports({ onNavigate }: AdminReportsProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-            Intelligence & Compliance Reports
+            {t("adminPages.reportsTitle")}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Consolidated organizational reports on workforce proficiency, capability deficits, and capacity-building.

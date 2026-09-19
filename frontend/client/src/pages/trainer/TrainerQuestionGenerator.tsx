@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { api, LearningMaterial, TrainerQuestion } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 
 interface TrainerQuestionGeneratorProps {
   initialMaterialId?: string;
@@ -23,6 +24,7 @@ export function TrainerQuestionGenerator({
   initialMaterialId,
   onNavigate,
 }: TrainerQuestionGeneratorProps) {
+    const { t } = useTranslation();
   const [materials, setMaterials] = useState<LearningMaterial[]>([]);
   const [competencies, setCompetencies] = useState<{ code: string; name: string }[]>([
     { code: "STAT_SAMPLING", name: "Statistical Sampling & Survey Design" },
@@ -82,6 +84,7 @@ export function TrainerQuestionGenerator({
     e.preventDefault();
     if (!selectedMaterialId) {
       toast.error("Please select a learning material.");
+        toast.error(t("questionGenerator.selectMaterial"));
       return;
     }
 
@@ -105,8 +108,10 @@ export function TrainerQuestionGenerator({
       setGenerationStep(4);
       setGeneratedQuestions(result);
       toast.success(`Successfully generated ${result.length} questions! Ready for review.`);
+      toast.success(t("questionGenerator.generated", { count: result.length }));
     } catch (err: any) {
       toast.error(err.message || "Question generation failed");
+        toast.error(err.message || t("questionGenerator.generationFailed"));
       setGenerationStep(0);
     } finally {
       setGenerating(false);
@@ -128,6 +133,7 @@ export function TrainerQuestionGenerator({
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-800">
               AI Assessment Question Generator
+                          {t("questionGenerator.title")}
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
               RAG-grounded question synthesis from uploaded curriculum documents

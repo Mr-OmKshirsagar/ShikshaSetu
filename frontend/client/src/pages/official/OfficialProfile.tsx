@@ -23,6 +23,7 @@ import {
 import { api, type User, type SkillGapResponse, type LearningActivityListResponse } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { GovernmentTaxonomySelector } from "@/components/common/GovernmentTaxonomySelector";
 import {
   type GovernmentLevel,
@@ -74,10 +75,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ReadonlyValue({ value }: { value?: string | number | null }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-sm text-slate-600 min-h-[40px] flex items-center">
       {value !== null && value !== undefined && value !== "" ? String(value) : (
-        <span className="text-slate-300 italic">Not provided</span>
+        <span className="text-slate-300 italic">{t("common.notProvided")}</span>
       )}
     </div>
   );
@@ -172,10 +174,11 @@ function GapBadge({ category }: { category: string }) {
 // ─── System-generated badge ───────────────────────────────────────────────────
 
 function SystemBadge() {
+  const { t } = useTranslation();
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
       <Lock size={9} />
-      System Generated
+      {t("shell.systemGenerated")}
     </span>
   );
 }
@@ -184,6 +187,7 @@ function SystemBadge() {
 
 export function OfficialProfile() {
   const { user, updateUser } = useAuth();
+  const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
 
   // Section A — Basic
@@ -275,7 +279,7 @@ export function OfficialProfile() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) {
-      toast.error("Full name is required.");
+      toast.error(t("common.fullNameRequired"));
       return;
     }
     try {
@@ -312,7 +316,7 @@ export function OfficialProfile() {
       Object.keys(payload).forEach((k) => { if (payload[k] === null) delete payload[k]; });
       const updated = await api.auth.updateProfile(payload as Record<string, string>);
       updateUser(updated);
-      toast.success("Profile saved successfully.");
+      toast.success(t("common.profileSaved"));
     } catch (err: any) {
       toast.error(err.message || "Failed to save profile.");
     } finally {

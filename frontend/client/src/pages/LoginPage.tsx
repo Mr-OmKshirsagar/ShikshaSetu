@@ -5,12 +5,8 @@ import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Role } from "@/lib/api";
-import { GovernmentTaxonomySelector } from "@/components/common/GovernmentTaxonomySelector";
-import {
-  type GovernmentLevel,
-  type GovernmentOrganization,
-  CENTRAL_MINISTRIES,
-} from "@/lib/governmentTaxonomy";
+import { DEPARTMENT_TAXONOMY } from "@/lib/departments";
+import { ShikshaSetuLogo } from "@/components/brand/ShikshaSetuLogo";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -110,9 +106,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#f4f7fb] text-[#18304f]">
       <header className="mx-auto flex max-w-[1380px] items-center justify-between px-6 py-5 lg:px-12">
-        <div className="flex items-center gap-3">
-          <img src="/shikshasetu-logo.svg" alt="ShikshaSetu" className="h-16 w-auto" />
-        </div>
+        <ShikshaSetuLogo variant="full" size="md" href="/" priority />
         <div className="hidden items-center gap-7 text-xs font-bold text-slate-500 md:flex">
           <a href="#capabilities" className="transition-colors hover:text-[#0f9f92]">Capabilities</a>
           <a href="#ecosystem" className="transition-colors hover:text-[#0f9f92]">Learning ecosystem</a>
@@ -159,12 +153,8 @@ export default function LoginPage() {
       <div className="flex items-center justify-center py-4 anim-page-enter lg:py-10">
         <div className="w-full max-w-[480px]">
           {/* Mobile logo */}
-          <div className="mb-6 flex items-center gap-2 lg:hidden">
-            <img
-              src="/shikshasetu-logo.svg"
-              alt="ShikshaSetu"
-              className="h-14 w-auto"
-            />
+          <div className="mb-6 flex items-center justify-center lg:hidden">
+            <ShikshaSetuLogo variant="full" size="md" priority />
           </div>
 
           <div className="rounded-[2rem] border border-[#dfe7f0] bg-white p-7 shadow-[0_24px_70px_rgba(18,48,87,.12)] anim-card-enter md:p-9">

@@ -8,7 +8,7 @@ import {
 import { en } from "./en";
 import { hi } from "./hi";
 
-type TranslationDictionary = typeof en;
+type TranslationDictionary = Record<string, Record<string, string>>;
 
 interface LanguageContextType {
   language: SupportedLanguage;
@@ -22,10 +22,42 @@ const dictionaries: Record<SupportedLanguage, TranslationDictionary> = {
   hi,
 };
 
+const KNOWN_FALLBACKS: Record<string, string> = {
+  "quizzes.assigned": "Assigned Quizzes",
+  "quiz.title": "Assigned Quizzes",
+  "skillGaps.intelligenceTitle": "Skill Gap Intelligence",
+  "skillGaps.intelligenceSubtitle": "Deficits between your verified capability levels and statutory role requirements.",
+  "skillGaps.roleRequirements": "Role Requirements",
+};
+
+function formatFallbackKey(path: string): string {
+  if (KNOWN_FALLBACKS[path]) {
+    return KNOWN_FALLBACKS[path];
+  }
+
+  const parts = path.split(".");
+  const leaf = parts[parts.length - 1] || path;
+
+  let text = leaf;
+  if ((leaf === "title" || leaf === "subtitle" || leaf === "assigned") && parts.length > 1) {
+    const parent = parts[parts.length - 2];
+    text = `${parent} ${leaf}`;
+  }
+
+  const words = text
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
+  return words.join(" ") || path;
+}
+
 export const LanguageContext = createContext<LanguageContextType>({
   language: DEFAULT_LANGUAGE,
   setLanguage: () => {},
-  t: (path: string) => path,
+  t: (path: string) => formatFallbackKey(path),
   isHindi: false,
 });
 
@@ -60,31 +92,34 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({
       } else {
         // Fallback to English dictionary if key missing in current language
         let fallback: any = dictionaries.en;
+        let foundFallback = true;
         for (const fbKey of keys) {
           if (fallback && typeof fallback === "object" && fbKey in fallback) {
             fallback = fallback[fbKey];
           } else {
-            return path; // Return raw path key if missing
+            foundFallback = false;
+            break;
           }
         }
-        current = fallback;
+        current = foundFallback ? fallback : undefined;
         break;
       }
     }
 
-    if (typeof current !== "string") {
-      return path;
+    let result: string;
+    if (typeof current === "string") {
+      result = current;
+    } else {
+      result = formatFallbackKey(path);
     }
 
     if (params) {
-      let result = current;
       for (const [pKey, pVal] of Object.entries(params)) {
         result = result.replace(new RegExp(`{${pKey}}`, "g"), String(pVal));
       }
-      return result;
     }
 
-    return current;
+    return result;
   };
 
   return (

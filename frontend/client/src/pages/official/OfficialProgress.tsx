@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal } from "@/components/motion/MotionUtils";
 
 interface OfficialProgressProps {
@@ -26,6 +27,7 @@ interface OfficialProgressProps {
 }
 
 export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
+  const { t } = useTranslation();
   const [skillGaps, setSkillGaps] = useState<SkillGapResponse | null>(null);
   const [activities, setActivities] = useState<LearningActivityListResponse | null>(null);
   const [evidenceList, setEvidenceList] = useState<any[]>([]);
@@ -146,7 +148,7 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#123057]">Progress & Capability Growth</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#123057]">{t("nav.progress")}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Real longitudinal capability progress based on verified assessments and recorded learning time.
           </p>

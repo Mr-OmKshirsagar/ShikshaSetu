@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { api, clearApiCache, EmergingSkillsResponse, EmergingSkillItem } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "@/i18n";
 import { NumberReveal } from "@/components/motion/MotionUtils";
 
 interface EmergingSkillsProps {
@@ -14,6 +15,7 @@ interface EmergingSkillsProps {
 }
 
 export function EmergingSkills({ onNavigate }: EmergingSkillsProps) {
+  const { t } = useTranslation();
   const [data, setData] = useState<EmergingSkillsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,7 +45,7 @@ export function EmergingSkills({ onNavigate }: EmergingSkillsProps) {
             <Zap size={13} /> Skill Gap Signals
           </div>
           <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-            Observed Competency Gaps
+            {t("adminPages.emergingTitle")}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Current-state signals based on assessed competency profiles and stored role requirements.
