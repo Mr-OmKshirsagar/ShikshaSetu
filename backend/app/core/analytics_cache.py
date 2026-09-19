@@ -15,10 +15,13 @@ logger = logging.getLogger(__name__)
 _ANALYTICS_CACHE: Dict[str, tuple[float, Any]] = {}
 
 DEFAULT_TTL_SECONDS = 60.0  # 60-second TTL safety boundary
+CACHE_ENABLED: bool = True
 
 
 def get_cached_item(key: str, ttl_seconds: float = DEFAULT_TTL_SECONDS) -> Optional[Any]:
     """Retrieve an item from the cache if present and not expired."""
+    if not CACHE_ENABLED:
+        return None
     entry = _ANALYTICS_CACHE.get(key)
     if not entry:
         return None
@@ -31,6 +34,8 @@ def get_cached_item(key: str, ttl_seconds: float = DEFAULT_TTL_SECONDS) -> Optio
 
 def set_cached_item(key: str, data: Any) -> None:
     """Store an item in the cache with current timestamp."""
+    if not CACHE_ENABLED:
+        return
     _ANALYTICS_CACHE[key] = (time.time(), data)
 
 

@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 /**
  * useLearningActivities Hook Tests
  * Tests for learning activity state management and API interactions
@@ -20,6 +21,16 @@ vi.mock('../../lib/api', () => ({
     },
   },
 }));
+
+const mockAPI = {
+  learningActivitiesAPI: {
+    getActivities: api.learningActivities.list as any,
+    startActivity: api.learningActivities.start as any,
+    getActivity: api.learningActivities.get as any,
+    updateProgress: api.learningActivities.update as any,
+    completeActivity: api.learningActivities.complete as any,
+  },
+};
 
 describe('useLearningActivities Hook', () => {
   const mockActivity = {
@@ -171,9 +182,13 @@ describe('useLearningActivities Hook', () => {
 
       const { result } = renderHook(() => useLearningActivities(false));
 
+      let promise!: Promise<void>;
+      act(() => {
+        promise = result.current.listActivities();
+      });
+      expect(result.current.loading).toBe(true);
+
       await act(async () => {
-        const promise = result.current.listActivities();
-        expect(result.current.loading).toBe(true);
         await promise;
       });
 
