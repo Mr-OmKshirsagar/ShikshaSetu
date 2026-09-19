@@ -66,6 +66,19 @@ def resolve_role_for_user(
             if desig_str in designations or (r.get("role_name", "").strip().lower() == desig_str) or (r.get("role_code", "").strip().lower() == desig_str):
                 return r["_id"]
 
+    # Step 3: Match via canonical government designation catalogue archetype
+    if desig_str:
+        try:
+            from app.core.government_taxonomy import find_canonical_designation
+            canon_desig = find_canonical_designation(desig_str)
+            if canon_desig and canon_desig.get("archetype_role"):
+                target_code = canon_desig["archetype_role"]
+                for r in roles:
+                    if r.get("role_code") == target_code:
+                        return r["_id"]
+        except Exception:
+            pass
+
     # No silent fallback! Unresolved role returns None.
     return None
 

@@ -97,6 +97,10 @@ class TrainerQuizCreateRequest(BaseModel):
     material_id: Optional[str] = None
     competency_code: str
     question_ids: list[str] = Field(min_length=1, description="IDs of approved trainer_questions")
+    target_competency_ids: list[str] = Field(default_factory=list)
+    target_role_ids: list[str] = Field(default_factory=list)
+    target_designation_ids: list[str] = Field(default_factory=list)
+    difficulty: str = Field(default="MEDIUM", pattern="^(EASY|MEDIUM|HARD)$")
 
 
 class TrainerQuizResponse(BaseModel):
@@ -111,6 +115,10 @@ class TrainerQuizResponse(BaseModel):
     status: str
     question_count: int
     questions: list[TrainerQuestionResponse] = Field(default_factory=list)
+    target_competency_ids: list[str] = Field(default_factory=list)
+    target_role_ids: list[str] = Field(default_factory=list)
+    target_designation_ids: list[str] = Field(default_factory=list)
+    difficulty: str = "MEDIUM"
     assigned_learners_count: int = 0
     attempts_count: int = 0
     average_score: Optional[float] = None

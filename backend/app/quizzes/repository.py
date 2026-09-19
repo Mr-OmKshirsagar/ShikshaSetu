@@ -44,17 +44,32 @@ def get_quiz_by_id(database: Database, quiz_id: str, user_id: str) -> dict | Non
     if not quiz:
         return None
 
-    # 1. Direct owner match
+    # 1. Direct owner or creator match
     if str(quiz.get("user_id", "")) == user_id_str or str(quiz.get("trainer_id", "")) == user_id_str:
         return quiz
     if user_oid and quiz.get("user_id") == user_oid:
         return quiz
 
+    user = database.users.find_one({"_id": user_oid}) if user_oid else None
+    if not user:
+        user = database.users.find_one({"_id": str(user_id)})
+    if user and user.get("access_role") in ("TRAINER", "ADMIN"):
+        return quiz
+
     # 2. Check trainer / assigned / published quiz
     if quiz.get("status") in ("PUBLISHED", "ASSIGNED"):
-        assigned = quiz.get("assigned_to")
-        if not assigned or user_id_str in [str(x) for x in assigned]:
+        assigned = [str(x) for x in quiz.get("assigned_to", [])] + [str(x) for x in quiz.get("assigned_user_ids", [])]
+        if user_id_str in assigned:
             return quiz
+
+        # Check role and competency relevance
+        if user:
+            try:
+                from app.quizzes.service import is_quiz_relevant_to_user
+                if is_quiz_relevant_to_user(database, user, quiz):
+                    return quiz
+            except Exception:
+                pass
 
     return None
 

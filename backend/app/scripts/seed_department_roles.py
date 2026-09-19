@@ -266,6 +266,39 @@ DEPARTMENT_ROLES_TAXONOMY = [
             },
         ],
     },
+    {
+        "department_name": "Revenue and Land Administration Department",
+        "department_code": "REV",
+        "description": "Land Records, Revenue Circles, Tehsil & District Land Administration",
+        "roles": [
+            {
+                "role_code": "REVENUE_ADMINISTRATION_OFFICER",
+                "role_name": "Revenue & Land Records Officer",
+                "domain": "Revenue & Land Governance",
+                "description": "Oversees village land records (7/12 extract, RoR), mutation registers, crop inspections, and revenue administration.",
+                "designations": [
+                    "Talathi",
+                    "Patwari",
+                    "Lekhpal",
+                    "Village Revenue Officer (VRO)",
+                    "Village Accountant",
+                    "Karnam",
+                    "Revenue Inspector (RI) / Circle Officer",
+                    "Naib Tahsildar / Nayab Tehsildar",
+                    "Tahsildar / Tehsildar",
+                    "Sub-Divisional Magistrate (SDM)",
+                    "District Collector / District Magistrate",
+                ],
+                "requirements": [
+                    {"code": "DIGOV_DIGITAL_PUBLIC_INFRASTRUCTURE", "required_level": 3.5, "priority": 1, "importance": 0.9},
+                    {"code": "DIGOV_DIGITAL_SIGNATURES", "required_level": 3.5, "priority": 2, "importance": 0.85},
+                    {"code": "BEH_COMMUNICATION", "required_level": 3.5, "priority": 2, "importance": 0.8},
+                    {"code": "BEH_ETHICS", "required_level": 4.5, "priority": 1, "importance": 0.95},
+                    {"code": "BEH_DECISION_MAKING", "required_level": 3.5, "priority": 2, "importance": 0.8},
+                ],
+            },
+        ],
+    },
 ]
 
 

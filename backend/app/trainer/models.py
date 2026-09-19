@@ -71,6 +71,11 @@ class TrainerQuiz(dict):
         description: str | None,
         questions: list[dict],
         question_ids: list[str],
+        target_competency_ids: list[str] | None = None,
+        target_role_ids: list[str] | None = None,
+        target_designation_ids: list[str] | None = None,
+        difficulty: str = "MEDIUM",
+        assignment_type: str = "COMPETENCY_TARGETED",
     ) -> dict:
         now = datetime.now(UTC)
         return {
@@ -85,7 +90,14 @@ class TrainerQuiz(dict):
             "questions": questions,
             "question_ids": question_ids,
             "question_count": len(questions),
+            "target_competency_ids": target_competency_ids or ([competency_code] if competency_code else []),
+            "target_role_ids": target_role_ids or [],
+            "target_designation_ids": target_designation_ids or [],
+            "difficulty": difficulty,
+            "assignment_type": assignment_type,
             "assigned_to": [],  # List of learner user_id strings
+            "assigned_user_ids": [],
+            "published": False,
             "created_at": now,
             "updated_at": now,
             "published_at": None,
