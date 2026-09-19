@@ -23,6 +23,13 @@ import {
 import { api, type User, type SkillGapResponse, type LearningActivityListResponse } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { GovernmentTaxonomySelector } from "@/components/common/GovernmentTaxonomySelector";
+import {
+  type GovernmentLevel,
+  type GovernmentOrganization,
+  CENTRAL_MINISTRIES,
+  getOrganizationsForLevelAndState,
+} from "@/lib/governmentTaxonomy";
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
@@ -183,8 +190,13 @@ export function OfficialProfile() {
   const [fullName, setFullName] = useState(user?.full_name || "");
   const [employeeId, setEmployeeId] = useState(user?.employee_id || "");
 
-  // Section B — Employment
+  // Section B — Employment & Government Taxonomy
+  const [level, setLevel] = useState<GovernmentLevel>("CENTRAL");
+  const [stateCode, setStateCode] = useState("");
+  const [selectedOrg, setSelectedOrg] = useState<GovernmentOrganization | null>(null);
   const [designation, setDesignation] = useState(user?.designation || "");
+  const [customDesignation, setCustomDesignation] = useState("");
+  const [isCustomDesignation, setIsCustomDesignation] = useState(false);
   const [department, setDepartment] = useState(user?.department || "");
   const [organization, setOrganization] = useState(user?.organization || "");
   const [currentAssignment, setCurrentAssignment] = useState(user?.current_assignment || "");
@@ -208,12 +220,23 @@ export function OfficialProfile() {
   const [keyResponsibilities, setKeyResponsibilities] = useState(user?.key_responsibilities || "");
 
   // Sync form fields whenever the authenticated user object changes
-  // (handles async session restore and post-save updates)
   useEffect(() => {
     if (!user) return;
     setFullName(user.full_name || "");
     setEmployeeId(user.employee_id || "");
-    setDesignation(user.designation || "");
+
+    const userLevel = (user.government_level || "CENTRAL") as GovernmentLevel;
+    setLevel(userLevel);
+    setStateCode(user.state_ut || "");
+    const orgs = getOrganizationsForLevelAndState(userLevel, user.state_ut);
+    const matchedOrg =
+      (user.organization_id && orgs.find((o) => o.id === user.organization_id)) ||
+      (user.department && orgs.find((o) => o.name === user.department)) ||
+      orgs[0] ||
+      null;
+    setSelectedOrg(matchedOrg);
+
+    setDesignation(user.government_designation || user.designation || "");
     setDepartment(user.department || "");
     setOrganization(user.organization || "");
     setCurrentAssignment(user.current_assignment || "");
@@ -225,7 +248,7 @@ export function OfficialProfile() {
     setGraduationYear(user.graduation_year != null ? String(user.graduation_year) : "");
     setTotalExperienceSummary(user.total_experience_summary || "");
     setKeyResponsibilities(user.key_responsibilities || "");
-  }, [user?.id]); // re-sync when the user ID changes (role switch or session restore)
+  }, [user?.id]);
 
   // System-generated data
   const [skillGaps, setSkillGaps] = useState<SkillGapResponse | null>(null);
@@ -257,12 +280,24 @@ export function OfficialProfile() {
     }
     try {
       setSaving(true);
+      const finalDesignation = isCustomDesignation
+        ? customDesignation.trim()
+        : designation.trim();
+
+      const finalDept = selectedOrg ? selectedOrg.name : department.trim();
+      const finalOrgShort = selectedOrg ? selectedOrg.short_name : organization.trim();
+
       const payload: Record<string, string | number | null> = {
         full_name: fullName.trim(),
         employee_id: employeeId.trim(),
-        designation: designation.trim(),
-        department: department.trim(),
-        organization: organization.trim() || null,
+        designation: finalDesignation,
+        department: finalDept,
+        organization: finalOrgShort || null,
+        organization_id: selectedOrg ? selectedOrg.id : null,
+        organization_type: selectedOrg ? selectedOrg.organization_type : null,
+        government_level: level,
+        state_ut: level !== "CENTRAL" ? stateCode || null : null,
+        government_designation: finalDesignation,
         current_assignment: currentAssignment.trim() || null,
         years_experience: yearsExperience !== "" ? parseInt(yearsExperience) : null,
         service_year: serviceYear !== "" ? parseInt(serviceYear) : null,
@@ -396,53 +431,54 @@ export function OfficialProfile() {
         </div>
       </Section>
 
-      {/* ── SECTION B: Employment Details ── */}
-      <Section title="Employment Details" icon={Briefcase}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Designation">
-            <EditInput
-              value={designation}
-              onChange={setDesignation}
-              placeholder="e.g. Statistical Officer"
-            />
-          </Field>
-          <Field label="Department / Ministry">
-            <EditInput
-              value={department}
-              onChange={setDepartment}
-              placeholder="e.g. Ministry of Statistics & PI"
-            />
-          </Field>
-          <Field label="Organization / Office">
-            <EditInput
-              value={organization}
-              onChange={setOrganization}
-              placeholder="e.g. NSSO, Regional Office Delhi"
-            />
-          </Field>
-          <Field label="Current Assignment">
-            <EditInput
-              value={currentAssignment}
-              onChange={setCurrentAssignment}
-              placeholder="e.g. District Field Survey Coordinator"
-            />
-          </Field>
-          <Field label="Years of Experience">
-            <EditInput
-              type="number"
-              value={yearsExperience}
-              onChange={setYearsExperience}
-              placeholder="e.g. 8"
-            />
-          </Field>
-          <Field label="Year of Joining Service">
-            <EditInput
-              type="number"
-              value={serviceYear}
-              onChange={setServiceYear}
-              placeholder="e.g. 2017"
-            />
-          </Field>
+      {/* ── SECTION B: Employment Details & Government Taxonomy ── */}
+      <Section title="Employment Details & Government Taxonomy" icon={Briefcase}>
+        <div className="space-y-4">
+          <GovernmentTaxonomySelector
+            level={level}
+            setLevel={setLevel}
+            stateCode={stateCode}
+            setStateCode={setStateCode}
+            selectedOrg={selectedOrg}
+            setSelectedOrg={setSelectedOrg}
+            designation={designation}
+            setDesignation={setDesignation}
+            customDesignation={customDesignation}
+            setCustomDesignation={setCustomDesignation}
+            isCustomDesignation={isCustomDesignation}
+            setIsCustomDesignation={setIsCustomDesignation}
+            disabled={saving}
+            required={false}
+          />
+
+          <div className="grid gap-4 sm:grid-cols-3 pt-3 border-t border-slate-100">
+            <Field label="Current Assignment">
+              <EditInput
+                value={currentAssignment}
+                onChange={setCurrentAssignment}
+                placeholder="e.g. District Field Survey Coordinator"
+                disabled={saving}
+              />
+            </Field>
+            <Field label="Years of Experience">
+              <EditInput
+                type="number"
+                value={yearsExperience}
+                onChange={setYearsExperience}
+                placeholder="e.g. 8"
+                disabled={saving}
+              />
+            </Field>
+            <Field label="Year of Joining Service">
+              <EditInput
+                type="number"
+                value={serviceYear}
+                onChange={setServiceYear}
+                placeholder="e.g. 2017"
+                disabled={saving}
+              />
+            </Field>
+          </div>
         </div>
       </Section>
 

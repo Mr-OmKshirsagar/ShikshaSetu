@@ -24,12 +24,21 @@ class RegisterRequest(BaseModel):
     employee_id: str = Field(min_length=1, max_length=100)
     access_role: AccessRole = Field(default=AccessRole.OFFICIAL)
 
+    # Canonical taxonomy fields (optional for backward compatibility)
+    organization_id: str | None = None
+    organization_type: str | None = None
+    government_level: str | None = None
+    state_ut: str | None = None
+    government_designation: str | None = None
+    designation_id: str | None = None
+    application_role: AccessRole | None = None
+
     @field_validator("email", mode="before")
     @classmethod
     def normalize_email_value(cls, value: str) -> str:
         return normalize_email(value)
 
-    @field_validator("access_role", mode="before")
+    @field_validator("access_role", "application_role", mode="before")
     @classmethod
     def normalize_access_role_value(cls, value: object) -> object:
         if isinstance(value, str):
@@ -40,10 +49,21 @@ class RegisterRequest(BaseModel):
                 return val_str
         return value
 
-    @field_validator("full_name", "designation", "department", "employee_id")
+    @field_validator(
+        "full_name",
+        "designation",
+        "department",
+        "employee_id",
+        "organization_id",
+        "organization_type",
+        "government_level",
+        "state_ut",
+        "government_designation",
+        "designation_id",
+    )
     @classmethod
-    def strip_text(cls, value: str) -> str:
-        return value.strip()
+    def strip_text(cls, value: str | None) -> str | None:
+        return value.strip() if value is not None else None
 
 
 class LoginRequest(BaseModel):
@@ -75,6 +95,15 @@ class UserResponse(BaseModel):
     status: str
     access_role: AccessRole
 
+    # Canonical government taxonomy fields
+    organization_id: str | None = None
+    organization_type: str | None = None
+    government_level: str | None = None
+    state_ut: str | None = None
+    government_designation: str | None = None
+    designation_id: str | None = None
+    application_role: str | None = None
+
     # Extended profile fields (optional, present only if set)
     organization: str | None = None
     current_assignment: str | None = None
@@ -97,6 +126,15 @@ class UserProfileUpdate(BaseModel):
     department: str | None = Field(default=None, min_length=1, max_length=200)
     employee_id: str | None = Field(default=None, min_length=1, max_length=100)
 
+    # Canonical government taxonomy fields
+    organization_id: str | None = Field(default=None, max_length=100)
+    organization_type: str | None = Field(default=None, max_length=100)
+    government_level: str | None = Field(default=None, max_length=50)
+    state_ut: str | None = Field(default=None, max_length=100)
+    government_designation: str | None = Field(default=None, max_length=200)
+    designation_id: str | None = Field(default=None, max_length=100)
+    application_role: str | None = Field(default=None, max_length=50)
+
     # Employment details
     organization: str | None = Field(default=None, max_length=300)
     current_assignment: str | None = Field(default=None, max_length=300)
@@ -114,9 +152,12 @@ class UserProfileUpdate(BaseModel):
     key_responsibilities: str | None = Field(default=None, max_length=1000)
 
     @field_validator("full_name", "designation", "department", "employee_id",
+                     "organization_id", "organization_type", "government_level",
+                     "state_ut", "government_designation", "designation_id", "application_role",
                      "organization", "current_assignment", "highest_qualification",
                      "field_of_study", "institution", "total_experience_summary",
                      "key_responsibilities")
     @classmethod
     def strip_text(cls, value: str | None) -> str | None:
         return value.strip() if value is not None else None
+

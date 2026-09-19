@@ -15,11 +15,16 @@ import {
   Target,
   BarChart2,
   ClipboardCheck,
+  HelpCircle,
+  Sparkles,
+  X,
 } from "lucide-react";
 import {
   api,
   clearApiCache,
   type AssignedQuiz,
+  type RecommendedQuizItem,
+  type QuizFeedMeta,
   type QuizDetail,
   type QuizAttemptResult,
 } from "@/lib/api";
@@ -75,12 +80,66 @@ function LevelBar({ before, after, max = 5 }: { before: number; after: number; m
   );
 }
 
+function RelevanceBadge({ reason, gapSize }: { reason?: string; gapSize?: number }) {
+  if (!reason) return null;
+
+  switch (reason) {
+    case "CRITICAL_GAP":
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 shadow-xs">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+          Critical Gap {gapSize ? `(-${gapSize.toFixed(1)})` : ""}
+        </span>
+      );
+    case "HIGH_GAP":
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          High Gap {gapSize ? `(-${gapSize.toFixed(1)})` : ""}
+        </span>
+      );
+    case "IDENTIFIED_GAP":
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-0.5 text-[10px] font-bold text-orange-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+          Competency Gap
+        </span>
+      );
+    case "ASSIGNED_BY_TRAINER":
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[10px] font-bold text-purple-700">
+          <Award size={10} className="text-purple-600" />
+          Trainer Assigned
+        </span>
+      );
+    case "REQUIRED_COMPETENCY":
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-0.5 text-[10px] font-bold text-teal-800">
+          <Target size={10} className="text-teal-600" />
+          Required Competency
+        </span>
+      );
+    case "ROLE_TARGETED":
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-800">
+          <BookOpen size={10} className="text-sky-600" />
+          Role Targeted
+        </span>
+      );
+    default:
+      return null;
+  }
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function OfficialQuizzes({ initialCompetencyCode, onNavigate }: OfficialQuizzesProps) {
   // List phase
   const [assignedQuizzes, setAssignedQuizzes] = useState<AssignedQuiz[]>([]);
+  const [recommendedQuizzes, setRecommendedQuizzes] = useState<RecommendedQuizItem[]>([]);
+  const [feedMeta, setFeedMeta] = useState<QuizFeedMeta | null>(null);
   const [listLoading, setListLoading] = useState(true);
+  const [selectedWhyQuiz, setSelectedWhyQuiz] = useState<RecommendedQuizItem | null>(null);
 
   // Attempt phase
   const [activeQuiz, setActiveQuiz] = useState<QuizDetail | null>(null);
@@ -96,32 +155,43 @@ export function OfficialQuizzes({ initialCompetencyCode, onNavigate }: OfficialQ
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
-  const fetchAssignedQuizzes = async () => {
+  const fetchQuizzes = async () => {
     clearApiCache();
     try {
       setListLoading(true);
-      const list = await api.quizzes.assigned();
-      setAssignedQuizzes(list);
+      const feed = await api.quizzes.feed();
+      setAssignedQuizzes(feed.assigned || []);
+      setRecommendedQuizzes(feed.recommended || []);
+      setFeedMeta(feed.meta || null);
 
       // Auto-start if navigated with a competency code
-      if (initialCompetencyCode && list.length > 0) {
-        const match = list.find(
+      if (initialCompetencyCode) {
+        const matchAssigned = (feed.assigned || []).find(
           (q) => q.competency_code === initialCompetencyCode
         );
-        if (match) {
-          const qid = match._id || match.quiz_id;
-          if (qid) startQuizSession(qid);
+        if (matchAssigned) {
+          const qid = matchAssigned._id || matchAssigned.quiz_id;
+          if (qid) {
+            startQuizSession(qid);
+            return;
+          }
+        }
+        const matchRec = (feed.recommended || []).find(
+          (q) => q.competency_code === initialCompetencyCode
+        );
+        if (matchRec && matchRec._id) {
+          startQuizSession(matchRec._id);
         }
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to load assigned quizzes");
+      toast.error(err.message || "Failed to load quizzes");
     } finally {
       setListLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAssignedQuizzes();
+    fetchQuizzes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCompetencyCode]);
 
@@ -160,7 +230,7 @@ export function OfficialQuizzes({ initialCompetencyCode, onNavigate }: OfficialQ
       setActiveQuiz(null);
       toast.success("Quiz submitted! Results and competency update ready.");
       // Refresh the quiz list (status may have changed on the backend)
-      fetchAssignedQuizzes();
+      fetchQuizzes();
     } catch (err: any) {
       if ((err as any).status === 409) {
         toast.error("This quiz has already been submitted.");
@@ -576,19 +646,19 @@ export function OfficialQuizzes({ initialCompetencyCode, onNavigate }: OfficialQ
 
   // ── Phase: QUIZ LIST ──────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 anim-page-enter max-w-4xl mx-auto">
+    <div className="space-y-8 anim-page-enter max-w-4xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#123057]">Assigned Quizzes</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#123057]">My Quizzes</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Practice quizzes assigned by curriculum trainers to test domain knowledge.
+            Assessments assigned by your trainers and AI-recommended quizzes tailored to your role and competency gaps.
           </p>
         </div>
         <button
-          onClick={fetchAssignedQuizzes}
+          onClick={fetchQuizzes}
           disabled={listLoading}
-          className="flex items-center gap-1.5 rounded-xl border border-[#dfe7f0] bg-white px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 rounded-xl border border-[#dfe7f0] bg-white px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-xs"
         >
           <RefreshCw size={14} className={listLoading ? "animate-spin" : ""} />
           Refresh Quizzes
@@ -596,77 +666,338 @@ export function OfficialQuizzes({ initialCompetencyCode, onNavigate }: OfficialQ
       </div>
 
       {listLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="h-36 rounded-2xl bg-white animate-pulse border border-slate-200" />
-          ))}
-        </div>
-      ) : assignedQuizzes.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#dfe7f0] bg-white p-12 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
-            <Award size={24} />
-          </div>
-          <h3 className="mt-4 text-base font-bold text-[#123057]">No quizzes currently assigned</h3>
-          <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
-            When trainers assign quizzes to your cohort, they will appear here. Use the Refresh
-            button to check for newly assigned quizzes.
-          </p>
+        <div className="space-y-4">
+          <div className="h-40 rounded-2xl bg-white animate-pulse border border-slate-200" />
+          <div className="h-40 rounded-2xl bg-white animate-pulse border border-slate-200" />
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {assignedQuizzes.map((q, idx) => {
-            const quizId = q._id || q.quiz_id || "";
-            const isSubmitted = q.status === "SUBMITTED" || q.status === "COMPLETED";
-
-            return (
-              <div
-                key={quizId || idx}
-                className="flex flex-col justify-between rounded-2xl border border-[#dfe7f0] bg-white p-6 shadow-sm hover:border-teal-300 hover:shadow-md transition-all group"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="rounded bg-teal-50 border border-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800 font-mono">
-                      {q.question_count} Questions
-                    </span>
-                    {isSubmitted ? (
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
-                        Completed
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
-                        Assigned
-                      </span>
-                    )}
-                  </div>
-
-                  <h3 className="text-base font-bold text-[#123057] mt-3 group-hover:text-teal-800 transition-colors leading-snug">
-                    {q.title}
-                  </h3>
-
-                  {q.competency_code && (
-                    <div className="mt-2 inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-mono font-bold text-slate-600">
-                      {q.competency_code}
-                    </div>
-                  )}
+        <div className="space-y-8">
+          {/* ── Section 1: Assigned by Trainer ── */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-[#123057] flex items-center gap-2">
+                    <Award size={18} className="text-purple-600" />
+                    Assigned by Trainer
+                  </h2>
+                  <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-800">
+                    {assignedQuizzes.length}
+                  </span>
                 </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Mandatory and formal assessments assigned directly to you by department trainers.
+                </p>
+              </div>
+            </div>
 
-                <div className="mt-5 border-t border-slate-100 pt-4">
-                  <button
-                    onClick={() => startQuizSession(quizId)}
-                    disabled={!quizId}
-                    className={`w-full inline-flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold text-white shadow transition-all active:scale-95 ${
-                      isSubmitted
-                        ? "bg-slate-500 hover:bg-slate-600"
-                        : "bg-[#ef7e37] hover:bg-[#d96a27]"
-                    } disabled:opacity-40`}
-                  >
-                    <Play size={12} />
-                    {isSubmitted ? "Retake Quiz" : "Attempt Quiz"}
-                  </button>
+            {assignedQuizzes.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-8 text-center">
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                  <Award size={20} />
+                </div>
+                <h3 className="mt-3 text-sm font-bold text-slate-700">No trainer-assigned quizzes</h3>
+                <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
+                  When a trainer or administrator assigns formal evaluations to your profile, they will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {assignedQuizzes.map((q, idx) => {
+                  const quizId = q._id || q.quiz_id || "";
+                  const isSubmitted = q.status === "SUBMITTED" || q.status === "COMPLETED";
+
+                  return (
+                    <div
+                      key={quizId || idx}
+                      className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all group"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="rounded-full bg-purple-50 border border-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-700">
+                              Trainer Assigned
+                            </span>
+                            <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 font-mono">
+                              {q.question_count} Qs
+                            </span>
+                            {q.difficulty && (
+                              <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase font-mono">
+                                {q.difficulty}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            {isSubmitted ? (
+                              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                                Completed
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600">
+                                Available
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {q.is_also_recommended && (
+                          <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50/90 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                            <Sparkles size={12} className="text-amber-600 shrink-0" />
+                            <span>Also relevant to your competency gap</span>
+                          </div>
+                        )}
+
+                        <h3 className="text-base font-bold text-[#123057] mt-2.5 group-hover:text-purple-800 transition-colors leading-snug">
+                          {q.title}
+                        </h3>
+
+                        {q.competency_code && (
+                          <div className="mt-2.5 flex items-center gap-2">
+                            <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-600">
+                              {q.competency_code}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-5 border-t border-slate-100 pt-3.5">
+                        <button
+                          onClick={() => startQuizSession(quizId)}
+                          disabled={!quizId}
+                          className={`w-full inline-flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold text-white shadow-xs transition-all active:scale-95 ${
+                            isSubmitted
+                              ? "bg-slate-500 hover:bg-slate-600"
+                              : "bg-purple-600 hover:bg-purple-700"
+                          } disabled:opacity-40`}
+                        >
+                          <Play size={12} />
+                          {isSubmitted ? "Retake Quiz" : "Attempt Quiz"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── Section 2: Recommended for You ── */}
+          <div className="space-y-4 pt-4 border-t border-slate-200/80">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-[#123057] flex items-center gap-2">
+                    <Sparkles size={18} className="text-[#ef7e37]" />
+                    Recommended for You
+                  </h2>
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+                    {recommendedQuizzes.length}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Based on your role and competency gaps
+                </p>
+              </div>
+            </div>
+
+            {recommendedQuizzes.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-8 text-center">
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                  <CheckCircle2 size={20} />
+                </div>
+                <h3 className="mt-3 text-sm font-bold text-slate-700">No active gap recommendations</h3>
+                <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
+                  Your assessed competencies meet current role standards, or no targeted practice quizzes match your current profile gaps.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {recommendedQuizzes.map((item, idx) => {
+                  const quizId = item._id;
+                  const matchPct = Math.round(item.recommendation_score * 100);
+
+                  return (
+                    <div
+                      key={quizId || idx}
+                      className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-amber-300 hover:shadow-sm transition-all group"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 flex items-center gap-1">
+                              <Sparkles size={10} className="text-[#ef7e37]" />
+                              Recommended
+                            </span>
+                            <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 font-mono">
+                              {item.question_count} Qs
+                            </span>
+                            {item.difficulty && (
+                              <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase font-mono">
+                                {item.difficulty}
+                              </span>
+                            )}
+                          </div>
+                          <span className="inline-flex items-center rounded-md bg-teal-50 border border-teal-200 px-2 py-0.5 text-[10px] font-bold text-teal-700 font-mono">
+                            {matchPct}% Match
+                          </span>
+                        </div>
+
+                        <h3 className="text-base font-bold text-[#123057] mt-3 group-hover:text-amber-800 transition-colors leading-snug">
+                          {item.title}
+                        </h3>
+
+                        {/* Primary reason callout */}
+                        {item.primary_reason && (
+                          <div className="mt-2.5 text-xs text-slate-600 bg-amber-50/50 border border-amber-100 rounded-xl px-3 py-2 flex items-start gap-2 leading-relaxed">
+                            <Target size={13} className="text-[#ef7e37] shrink-0 mt-0.5" />
+                            <span>{item.primary_reason}</span>
+                          </div>
+                        )}
+
+                        {/* Competency & Levels */}
+                        <div className="mt-3 flex items-center gap-2 flex-wrap text-[11px]">
+                          {item.competency_code && (
+                            <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 font-mono font-bold text-slate-700">
+                              {item.competency_code}
+                            </span>
+                          )}
+                          <span className="text-slate-500 font-medium">
+                            Level: <strong className="text-slate-700">{item.current_level.toFixed(1)}</strong> / Req: <strong className="text-slate-700">{item.required_level.toFixed(1)}</strong>
+                          </span>
+                          {item.gap_size > 0 && (
+                            <span className="text-rose-600 font-bold">
+                              (-{item.gap_size.toFixed(1)} gap)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="mt-5 border-t border-slate-100 pt-3.5 flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedWhyQuiz(item)}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                        >
+                          <HelpCircle size={13} className="text-slate-500" />
+                          Why this quiz?
+                        </button>
+                        <button
+                          onClick={() => startQuizSession(quizId)}
+                          disabled={!quizId}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#ef7e37] hover:bg-[#d96a27] py-2 text-xs font-bold text-white shadow-xs transition-all active:scale-95 disabled:opacity-40"
+                        >
+                          <Play size={12} />
+                          Start Practice
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── "Why this quiz?" Dialog / Modal ── */}
+      {selectedWhyQuiz && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-200">
+            <button
+              onClick={() => setSelectedWhyQuiz(null)}
+              className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#123057]">Recommendation Rationale</h3>
+                <p className="text-xs text-slate-500">How this assessment was matched to your profile</p>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Target Assessment</span>
+                <p className="text-sm font-bold text-[#123057] mt-0.5">{selectedWhyQuiz.title}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3.5 border border-slate-200/80">
+                <div>
+                  <span className="text-[11px] text-slate-500">Your Official Role</span>
+                  <p className="text-xs font-bold text-[#123057] mt-0.5">
+                    {selectedWhyQuiz.role_title || feedMeta?.role_title || "Official"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500">Competency Code</span>
+                  <p className="text-xs font-mono font-bold text-teal-800 mt-0.5">
+                    {selectedWhyQuiz.competency_code}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500">Current Level</span>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5">
+                    {selectedWhyQuiz.current_level.toFixed(1)} / 5.0
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[11px] text-slate-500">Required Role Level</span>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5">
+                    {selectedWhyQuiz.required_level.toFixed(1)} / 5.0
+                  </p>
                 </div>
               </div>
-            );
-          })}
+
+              {selectedWhyQuiz.gap_size > 0 && (
+                <div className="flex items-center justify-between rounded-xl bg-rose-50 border border-rose-200/70 px-3.5 py-2.5">
+                  <span className="text-xs font-bold text-rose-800">Assessed Competency Gap</span>
+                  <span className="text-xs font-mono font-bold text-rose-700">
+                    -{selectedWhyQuiz.gap_size.toFixed(1)} Level Gap
+                  </span>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-slate-200 p-3.5 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">AI Scoring Analysis</span>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  {selectedWhyQuiz.primary_reason}
+                </p>
+                {selectedWhyQuiz.score_breakdown && (
+                  <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+                    <div>Role Alignment: <strong className="text-slate-800">{Math.round((selectedWhyQuiz.score_breakdown.role_score || 0) * 100)}%</strong></div>
+                    <div>Gap Relevance: <strong className="text-slate-800">{Math.round((selectedWhyQuiz.score_breakdown.gap_score || 0) * 100)}%</strong></div>
+                    <div>Severity Weight: <strong className="text-slate-800">{Math.round((selectedWhyQuiz.score_breakdown.severity_score || 0) * 100)}%</strong></div>
+                    <div>Difficulty Fit: <strong className="text-slate-800">{Math.round((selectedWhyQuiz.score_breakdown.difficulty_score || 0) * 100)}%</strong></div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2.5">
+              <button
+                onClick={() => setSelectedWhyQuiz(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  const qid = selectedWhyQuiz._id;
+                  setSelectedWhyQuiz(null);
+                  startQuizSession(qid);
+                }}
+                className="rounded-xl bg-[#ef7e37] hover:bg-[#d96a27] px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                <Play size={12} />
+                Start Practice Quiz
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

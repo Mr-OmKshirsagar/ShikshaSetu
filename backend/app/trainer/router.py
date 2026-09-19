@@ -335,6 +335,10 @@ def create_trainer_quiz(
             material_id=payload.material_id,
             competency_code=payload.competency_code,
             question_ids=payload.question_ids,
+            target_competency_ids=payload.target_competency_ids,
+            target_role_ids=payload.target_role_ids,
+            target_designation_ids=payload.target_designation_ids,
+            difficulty=payload.difficulty,
         )
         invalidate_trainer_cache(str(current_user["_id"]))
         return res

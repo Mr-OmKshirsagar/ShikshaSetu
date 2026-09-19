@@ -39,10 +39,51 @@ class QuizResponse(BaseModel):
     competency_code: str
     question_count: int
     status: str
-    questions: list[QuizQuestionResponse]
+    questions: list[QuizQuestionResponse] = Field(default_factory=list)
     created_at: datetime
+    description: Optional[str] = None
+    relevance_reason: Optional[str] = None
+    relevance_explanation: Optional[str] = None
+    priority: Optional[int] = None
+    is_gap: Optional[bool] = None
+    gap_size: Optional[float] = None
+    current_level: Optional[float] = None
+    required_level: Optional[float] = None
+    difficulty: Optional[str] = None
+    target_competency_ids: list[str] = Field(default_factory=list)
+    target_role_ids: list[str] = Field(default_factory=list)
+    target_designation_ids: list[str] = Field(default_factory=list)
+    assigned_at: Optional[datetime] = None
+    trainer_name: Optional[str] = None
+    is_also_recommended: Optional[bool] = False
 
     model_config = {"populate_by_name": True}
+
+
+class RecommendedQuizItem(BaseModel):
+    """Recommended quiz item with pedagogical explainability."""
+    quiz: QuizResponse
+    primary_competency: str
+    current_level: Optional[float] = None
+    required_level: Optional[float] = None
+    gap: Optional[float] = None
+    recommendation_score: float
+    reason: str
+    role_name: Optional[str] = None
+
+
+class QuizFeedMeta(BaseModel):
+    """Metadata for official quiz feed."""
+    total_assigned: int
+    total_recommended: int
+    recommendation_reasoning: bool = True
+
+
+class QuizFeedResponse(BaseModel):
+    """Dual-source response separating Trainer Assignments from System Recommendations."""
+    assigned: list[QuizResponse] = Field(default_factory=list)
+    recommended: list[RecommendedQuizItem] = Field(default_factory=list)
+    meta: QuizFeedMeta
 
 
 class QuizAnswerRequest(BaseModel):
@@ -109,3 +150,50 @@ class QuizResultResponse(BaseModel):
     submitted_at: datetime
 
     model_config = {"populate_by_name": True}
+
+
+class RecommendedQuizScoreBreakdown(BaseModel):
+    gap_score: float = 0.0
+    role_score: float = 0.0
+    severity_score: float = 0.0
+    difficulty_score: float = 0.0
+    prereq_score: float = 0.0
+    total_score: float = 0.0
+
+
+class RecommendedQuizItem(BaseModel):
+    quiz_id: str = Field(alias="_id")
+    title: str
+    competency_code: str
+    question_count: int
+    status: str
+    created_at: datetime
+    recommendation_score: float
+    recommendation_source: str
+    primary_reason: str
+    current_level: float
+    required_level: float
+    gap_size: float
+    is_gap: bool
+    role_title: Optional[str] = None
+    difficulty: Optional[str] = None
+    description: Optional[str] = None
+    score_breakdown: Optional[RecommendedQuizScoreBreakdown] = None
+
+    model_config = {"populate_by_name": True}
+
+
+class QuizFeedMeta(BaseModel):
+    user_id: str
+    role_id: str
+    role_title: str
+    total_assigned: int
+    total_recommended: int
+    active_gaps_count: int
+
+
+class QuizFeedResponse(BaseModel):
+    assigned: list[QuizResponse]
+    recommended: list[RecommendedQuizItem]
+    meta: QuizFeedMeta
+

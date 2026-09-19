@@ -16,7 +16,11 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 def public_user(document: dict) -> dict:
     result = {key: value for key, value in document.items() if key != "password_hash"}
     result["id"] = str(result.pop("_id"))
-    result["role_id"] = str(result["role_id"])
+    result["role_id"] = str(result["role_id"]) if result.get("role_id") is not None else ""
+    if not result.get("application_role") and result.get("access_role"):
+        result["application_role"] = str(result["access_role"])
+    if not result.get("government_designation") and result.get("designation"):
+        result["government_designation"] = str(result["designation"])
     return result
 
 
@@ -60,6 +64,9 @@ def register(request: Request, payload: RegisterRequest) -> dict:
         )
 
     access_role_value = AccessRole.OFFICIAL.value
+    app_role_val = (
+        payload.application_role.value if hasattr(payload.application_role, "value") else str(payload.application_role)
+    ) if payload.application_role else access_role_value
 
     timestamp = datetime.now(UTC)
     document = {
@@ -72,6 +79,13 @@ def register(request: Request, payload: RegisterRequest) -> dict:
         "employee_id": payload.employee_id,
         "status": "active",
         "access_role": access_role_value,
+        "application_role": app_role_val,
+        "organization_id": payload.organization_id,
+        "organization_type": payload.organization_type,
+        "government_level": payload.government_level,
+        "state_ut": payload.state_ut,
+        "government_designation": payload.government_designation or payload.designation,
+        "designation_id": payload.designation_id,
         "created_at": timestamp,
         "updated_at": timestamp,
         "last_login_at": None,

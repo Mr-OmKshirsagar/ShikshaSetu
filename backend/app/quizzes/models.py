@@ -1,5 +1,5 @@
 """MongoDB models for Quiz and QuizAttempt."""
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Optional
 
@@ -73,18 +73,35 @@ class Quiz(dict):
         title: str,
         questions: list[dict],
         question_count: int,
+        target_competency_ids: list[str] | None = None,
+        target_role_ids: list[str] | None = None,
+        target_designation_ids: list[str] | None = None,
+        difficulty: str = "MEDIUM",
+        assignment_type: str = "COMPETENCY_TARGETED",
+        assigned_to: list[str] | None = None,
+        description: str | None = None,
     ) -> dict:
         """Create a new quiz document."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
+        assigned_list = assigned_to or []
         return {
             "_id": ObjectId(),
             "user_id": user_id,
             "material_id": material_id,
             "competency_code": competency_code,
             "title": title,
+            "description": description or "",
             "questions": questions,
             "question_count": question_count,
+            "target_competency_ids": target_competency_ids or ([competency_code] if competency_code else []),
+            "target_role_ids": target_role_ids or [],
+            "target_designation_ids": target_designation_ids or [],
+            "difficulty": difficulty,
+            "assignment_type": assignment_type,
+            "assigned_to": assigned_list,
+            "assigned_user_ids": assigned_list,
             "status": QuizStatus.READY,
+            "published": True,
             "created_at": now,
             "submitted_at": None,
             "score": None,
@@ -114,7 +131,7 @@ class QuizAttempt(dict):
         total_questions: int,
     ) -> dict:
         """Create a new quiz attempt document."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         return {
             "_id": ObjectId(),
             "quiz_id": quiz_id,

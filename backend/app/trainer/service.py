@@ -271,6 +271,10 @@ class TrainerService:
         material_id: str | None,
         competency_code: str,
         question_ids: list[str],
+        target_competency_ids: list[str] | None = None,
+        target_role_ids: list[str] | None = None,
+        target_designation_ids: list[str] | None = None,
+        difficulty: str = "MEDIUM",
     ) -> dict:
         """
         Create a quiz draft from reviewed questions.
@@ -308,6 +312,10 @@ class TrainerService:
             description=description,
             questions=quiz_questions,
             question_ids=question_ids,
+            target_competency_ids=target_competency_ids,
+            target_role_ids=target_role_ids,
+            target_designation_ids=target_designation_ids,
+            difficulty=difficulty,
         )
 
         quiz_id = self.repo.create_quiz(self.database, quiz_doc)
@@ -642,6 +650,10 @@ class TrainerService:
             "status": q.get("status", TrainerQuizStatus.DRAFT.value),
             "question_count": q.get("question_count", len(questions)),
             "questions": questions,
+            "target_competency_ids": q.get("target_competency_ids") or ([q.get("competency_code")] if q.get("competency_code") else []),
+            "target_role_ids": q.get("target_role_ids", []),
+            "target_designation_ids": q.get("target_designation_ids", []),
+            "difficulty": q.get("difficulty", "MEDIUM"),
             "assigned_learners_count": len(assigned_list),
             "attempts_count": len(attempts),
             "average_score": avg_score,

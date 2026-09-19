@@ -53,6 +53,14 @@ export type User = {
   employee_id: string;
   status: string;
   access_role: "OFFICIAL" | "TRAINER" | "ADMIN" | "EMPLOYEE";
+  // Canonical government taxonomy fields
+  organization_id?: string | null;
+  organization_type?: string | null;
+  government_level?: "CENTRAL" | "STATE" | "UT" | null;
+  state_ut?: string | null;
+  government_designation?: string | null;
+  designation_id?: string | null;
+  application_role?: "OFFICIAL" | "TRAINER" | "ADMIN" | null;
   // Extended profile fields
   organization?: string | null;
   current_assignment?: string | null;
@@ -444,10 +452,72 @@ export type AssignedQuiz = {
   question_count: number;
   status: "PUBLISHED" | "ASSIGNED" | "SUBMITTED" | string;
   created_at: string;
+  // Personalization & Relevance fields
+  is_also_recommended?: boolean;
+  relevance_reason?:
+    | "ASSIGNED_BY_TRAINER"
+    | "CRITICAL_GAP"
+    | "HIGH_GAP"
+    | "IDENTIFIED_GAP"
+    | "ROLE_TARGETED"
+    | "REQUIRED_COMPETENCY"
+    | string;
+  relevance_explanation?: string;
+  priority?: number;
+  is_gap?: boolean;
+  gap_size?: number;
+  current_level?: number;
+  required_level?: number;
+  difficulty?: string;
+  target_competency_ids?: string[];
+  target_role_ids?: string[];
+  target_designation_ids?: string[];
   // Optional fields (present in some seeded quizzes)
   description?: string | null;
   trainer_name?: string | null;
   assigned_at?: string | null;
+};
+
+export type RecommendedQuizItem = {
+  _id: string;
+  title: string;
+  competency_code: string;
+  question_count: number;
+  status: string;
+  created_at: string;
+  recommendation_score: number;
+  recommendation_source: string;
+  primary_reason: string;
+  current_level: number;
+  required_level: number;
+  gap_size: number;
+  is_gap: boolean;
+  role_title?: string;
+  difficulty?: string;
+  description?: string | null;
+  score_breakdown?: {
+    gap_score?: number;
+    role_score?: number;
+    severity_score?: number;
+    difficulty_score?: number;
+    prereq_score?: number;
+    total_score?: number;
+  };
+};
+
+export type QuizFeedMeta = {
+  user_id: string;
+  role_id: string;
+  role_title: string;
+  total_assigned: number;
+  total_recommended: number;
+  active_gaps_count: number;
+};
+
+export type QuizFeedResponse = {
+  assigned: AssignedQuiz[];
+  recommended: RecommendedQuizItem[];
+  meta: QuizFeedMeta;
 };
 
 /** A single question returned by GET /quizzes/{id} — correct_answer is HIDDEN. */
@@ -1201,6 +1271,8 @@ export const api = {
   // Quizzes (official/learner side)
   quizzes: {
     assigned: () => request<AssignedQuiz[]>("/quizzes/assigned"),
+    feed: (limit = 5) => request<QuizFeedResponse>(`/quizzes/feed?limit=${limit}`),
+    recommended: (limit = 5) => request<RecommendedQuizItem[]>(`/quizzes/recommended?limit=${limit}`),
     get: (quizId: string) => request<QuizDetail>(`/quizzes/${quizId}`),
     submit: (
       quizId: string,

@@ -1,11 +1,16 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Eye, EyeOff, Building2, Briefcase, Award, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Role } from "@/lib/api";
-import { DEPARTMENT_TAXONOMY } from "@/lib/departments";
+import { GovernmentTaxonomySelector } from "@/components/common/GovernmentTaxonomySelector";
+import {
+  type GovernmentLevel,
+  type GovernmentOrganization,
+  CENTRAL_MINISTRIES,
+} from "@/lib/governmentTaxonomy";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -16,12 +21,16 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  // Registration fields
+  // Registration identity fields
   const [fullName, setFullName] = useState("");
   const [employeeId, setEmployeeId] = useState("");
-  const [department, setDepartment] = useState("");
-  const [selectedRoleCode, setSelectedRoleCode] = useState("");
-  const [selectedRoleId, setSelectedRoleId] = useState("");
+
+  // Cascading Government Taxonomy fields
+  const [level, setLevel] = useState<GovernmentLevel>("CENTRAL");
+  const [stateCode, setStateCode] = useState("");
+  const [selectedOrg, setSelectedOrg] = useState<GovernmentOrganization | null>(
+    CENTRAL_MINISTRIES[0]
+  );
   const [designation, setDesignation] = useState("");
   const [customDesignation, setCustomDesignation] = useState("");
   const [isCustomDesignation, setIsCustomDesignation] = useState(false);
@@ -39,69 +48,6 @@ export default function LoginPage() {
       .catch(() => undefined);
   }, []);
 
-  // Department-filtered available roles
-  const availableRoles = useMemo(() => {
-    if (!department) return [];
-    const deptObj = DEPARTMENT_TAXONOMY.find((d) => d.department_name === department);
-    if (!deptObj) return [];
-    return deptObj.roles;
-  }, [department]);
-
-  // Selected role configuration & description
-  const selectedRoleConfig = useMemo(() => {
-    return availableRoles.find((r) => r.role_code === selectedRoleCode);
-  }, [availableRoles, selectedRoleCode]);
-
-  // Role-filtered available designations
-  const availableDesignations = useMemo(() => {
-    return selectedRoleConfig ? selectedRoleConfig.designations : [];
-  }, [selectedRoleConfig]);
-
-  // Handle Department Change
-  const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextDept = e.target.value;
-    setDepartment(nextDept);
-    // Reset cascading fields
-    setSelectedRoleCode("");
-    setSelectedRoleId("");
-    setDesignation("");
-    setCustomDesignation("");
-    setIsCustomDesignation(false);
-  };
-
-  // Handle Role Change
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextRoleCode = e.target.value;
-    setSelectedRoleCode(nextRoleCode);
-
-    // Match backend role ID if available
-    const matchedBackendRole = roles.find(
-      (r) => r.role_code === nextRoleCode || r.role_name === nextRoleCode
-    );
-    if (matchedBackendRole) {
-      setSelectedRoleId(matchedBackendRole.id);
-    } else if (roles.length > 0) {
-      setSelectedRoleId(roles[0].id);
-    }
-
-    // Reset designation
-    setDesignation("");
-    setCustomDesignation("");
-    setIsCustomDesignation(false);
-  };
-
-  // Handle Designation Change
-  const handleDesignationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
-    if (val === "__custom__") {
-      setIsCustomDesignation(true);
-      setDesignation("");
-    } else {
-      setIsCustomDesignation(false);
-      setDesignation(val);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -113,30 +59,34 @@ export default function LoginPage() {
           ? customDesignation.trim()
           : designation.trim();
 
-        if (!department) {
-          throw new Error("Please select your Department / Ministry");
-        }
-        if (!selectedRoleCode) {
-          throw new Error("Please select your Professional Role");
+        if (!selectedOrg) {
+          throw new Error("Please select your Department / Organization");
         }
         if (!finalDesignation) {
-          throw new Error("Please select or enter your Designation");
+          throw new Error("Please select or enter your Official Designation");
         }
 
-        // Resolve active role ID for backend registration
-        let resolvedRoleId = selectedRoleId;
-        if (!resolvedRoleId) {
-          const matched = roles.find(
-            (r) => r.role_code === selectedRoleCode || r.role_name === selectedRoleCode
-          );
-          resolvedRoleId = matched ? matched.id : roles[0]?.id;
+        // Determine matching backend role ID
+        let resolvedRoleId = "";
+        if (selectedOrg.default_role_code) {
+          const matched = roles.find((r) => r.role_code === selectedOrg.default_role_code);
+          if (matched) resolvedRoleId = matched.id;
+        }
+        if (!resolvedRoleId && roles.length > 0) {
+          resolvedRoleId = roles[0].id;
         }
 
         await api.auth.register({
           full_name: fullName.trim(),
           employee_id: employeeId.trim(),
           designation: finalDesignation,
-          department: department.trim(),
+          department: selectedOrg.name,
+          organization: selectedOrg.short_name,
+          organization_id: selectedOrg.id,
+          organization_type: selectedOrg.organization_type,
+          government_level: level,
+          state_ut: level !== "CENTRAL" ? stateCode : null,
+          government_designation: finalDesignation,
           role_id: resolvedRoleId || "6a8ff00dbda6ad0866e7667c",
           email: email.trim(),
           password: password.trim(),
@@ -272,99 +222,23 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {/* 1. Department Selector */}
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <Building2 size={12} className="text-[#0f9f92]" />
-                      Department / Ministry *
-                    </label>
-                    <select
-                      className="form-input !mt-1 bg-slate-50/50 cursor-pointer font-bold text-[#123057]"
-                      value={department}
-                      onChange={handleDepartmentChange}
-                      required
-                    >
-                      <option value="">Select Department / Ministry</option>
-                      {DEPARTMENT_TAXONOMY.map((dept) => (
-                        <option key={dept.department_code} value={dept.department_name}>
-                          {dept.department_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* 2. Professional Role Selector (Filtered by Department) */}
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <Briefcase size={12} className="text-[#ef7e37]" />
-                      Professional Role *
-                    </label>
-                    <select
-                      className={`form-input !mt-1 cursor-pointer font-bold ${
-                        !department ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "text-[#123057]"
-                      }`}
-                      value={selectedRoleCode}
-                      onChange={handleRoleChange}
-                      disabled={!department}
-                      required
-                    >
-                      <option value="">
-                        {!department ? "← Select department above first" : "Select professional role"}
-                      </option>
-                      {availableRoles.map((role) => (
-                        <option key={role.role_code} value={role.role_code}>
-                          {role.role_name}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedRoleConfig && (
-                      <p className="mt-1 text-[11px] text-slate-500 leading-tight">
-                        <span className="font-semibold text-teal-800">Domain:</span> {selectedRoleConfig.domain} · {selectedRoleConfig.description}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* 3. Designation Selector (Filtered by Role) */}
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <Award size={12} className="text-[#6d5bc3]" />
-                      Designation *
-                    </label>
-                    <select
-                      className={`form-input !mt-1 cursor-pointer font-bold ${
-                        !selectedRoleCode ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "text-[#123057]"
-                      }`}
-                      value={isCustomDesignation ? "__custom__" : designation}
-                      onChange={handleDesignationChange}
-                      disabled={!selectedRoleCode}
-                      required={!isCustomDesignation}
-                    >
-                      <option value="">
-                        {!selectedRoleCode
-                          ? "← Select professional role above first"
-                          : "Select your designation"}
-                      </option>
-                      {availableDesignations.map((des) => (
-                        <option key={des} value={des}>
-                          {des}
-                        </option>
-                      ))}
-                      {selectedRoleCode && (
-                        <option value="__custom__">+ Other (Specify Custom Designation)</option>
-                      )}
-                    </select>
-
-                    {isCustomDesignation && (
-                      <input
-                        className="form-input !mt-1.5 border-teal-300 focus:border-teal-500 animate-fadeIn"
-                        placeholder="Type your official designation"
-                        value={customDesignation}
-                        onChange={(e) => setCustomDesignation(e.target.value)}
-                        required
-                        autoFocus
-                      />
-                    )}
-                  </div>
+                  {/* Cascading Government Organization & Designation Taxonomy Selector */}
+                  <GovernmentTaxonomySelector
+                    level={level}
+                    setLevel={setLevel}
+                    stateCode={stateCode}
+                    setStateCode={setStateCode}
+                    selectedOrg={selectedOrg}
+                    setSelectedOrg={setSelectedOrg}
+                    designation={designation}
+                    setDesignation={setDesignation}
+                    customDesignation={customDesignation}
+                    setCustomDesignation={setCustomDesignation}
+                    isCustomDesignation={isCustomDesignation}
+                    setIsCustomDesignation={setIsCustomDesignation}
+                    disabled={busy}
+                    required
+                  />
                 </>
               )}
 

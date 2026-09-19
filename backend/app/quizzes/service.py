@@ -1,5 +1,5 @@
 """Quiz service - business logic for quiz creation, submission, scoring, and competency updates."""
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 from bson import ObjectId
@@ -210,7 +210,7 @@ class QuizService:
         attempt_id = quiz_repo.insert_quiz_attempt(self.db, attempt_doc)
 
         # Update quiz with score
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         quiz_repo.update_quiz_with_score(
             self.db,
             quiz_id,
@@ -388,3 +388,809 @@ class QuizService:
         for q in questions:
             chunks.update(q.get("source_chunks", []))
         return list(chunks)
+
+    def list_relevant_quizzes_for_official(self, user_id: str) -> list[dict]:
+        """
+        List role- and competency-personalized quizzes available for the current official.
+        
+        Deterministic policy:
+        1. Explicitly assigned to user (Highest Priority)
+        2. Critical competency gap (Priority 2)
+        3. High-priority competency gap (Priority 3)
+        4. Other identified competency gap (Priority 4)
+        5. Role / Designation targeted (Priority 5)
+        6. Role required competency (practice / refresher even if met) (Priority 6)
+        
+        Quizzes outside of these criteria are strictly excluded.
+        """
+        u_oid = ObjectId(user_id) if ObjectId.is_valid(user_id) else None
+        user = None
+        if u_oid:
+            user = self.db.users.find_one({"_id": u_oid})
+        if not user:
+            user = self.db.users.find_one({"_id": str(user_id)})
+            
+        if not user:
+            return []
+
+        user_access_role = user.get("access_role")
+        if user_access_role in ("TRAINER", "ADMIN"):
+            cursor = self.db.quizzes.find({"status": {"$in": ["PUBLISHED", "ASSIGNED"]}})
+            if hasattr(cursor, "sort"):
+                cursor = cursor.sort("created_at", -1)
+            raw_list = list(cursor)
+            results = []
+            for q in raw_list:
+                q_copy = dict(q)
+                q_copy["relevance_reason"] = "ROLE_TARGETED"
+                q_copy["relevance_explanation"] = "Administrative catalogue access."
+                q_copy["priority"] = 1
+                safe_questions = []
+                for qu in q.get("questions", []):
+                    safe_questions.append({
+                        "question_id": str(qu.get("question_id", qu.get("_id", ""))),
+                        "question": qu.get("question", ""),
+                        "options": qu.get("options", []),
+                        "difficulty": qu.get("difficulty", "MEDIUM"),
+                        "source_chunks": qu.get("source_chunks", []),
+                    })
+                q_copy["questions"] = safe_questions
+                results.append(q_copy)
+            return results
+
+        user_dept = user.get("department")
+        user_desig = user.get("government_designation") or user.get("designation")
+        user_desig_id = user.get("designation_id")
+        user_role_id = user.get("role_id")
+
+        from app.roles.resolver import resolve_role_for_user
+        resolved_role_id = user_role_id
+        if not resolved_role_id and (user_dept or user_desig):
+            resolved_role_id = resolve_role_for_user(self.db, user_dept, user_desig)
+
+        role_doc = None
+        if resolved_role_id:
+            u_r_oid = ObjectId(resolved_role_id) if ObjectId.is_valid(resolved_role_id) else resolved_role_id
+            if hasattr(self.db, "roles"):
+                role_doc = self.db.roles.find_one({"$or": [{"_id": u_r_oid}, {"role_code": resolved_role_id}, {"role_id": resolved_role_id}]})
+
+        role_code = (role_doc.get("role_code") or role_doc.get("role_id")) if role_doc else (user.get("role") or user_role_id)
+        role_name = role_doc.get("role_name") if role_doc else user_desig
+
+        req_comp_codes = set()
+        role_query_ids = []
+        if resolved_role_id:
+            role_query_ids.append(resolved_role_id)
+            if ObjectId.is_valid(resolved_role_id):
+                role_query_ids.append(ObjectId(resolved_role_id))
+        if user_role_id:
+            role_query_ids.append(user_role_id)
+            if ObjectId.is_valid(user_role_id):
+                role_query_ids.append(ObjectId(user_role_id))
+        if user.get("role"):
+            role_query_ids.append(user["role"])
+        if role_doc:
+            role_query_ids.append(role_doc.get("_id"))
+            if role_doc.get("role_code"):
+                role_query_ids.append(role_doc["role_code"])
+            if role_doc.get("role_id"):
+                role_query_ids.append(role_doc["role_id"])
+
+        reqs = []
+        if role_query_ids and hasattr(self.db, "role_requirements"):
+            reqs = list(self.db.role_requirements.find({"role_id": {"$in": role_query_ids}}))
+            for r in reqs:
+                if r.get("competency_code"):
+                    req_comp_codes.add(r["competency_code"])
+                elif r.get("competency_id"):
+                    cid = r["competency_id"]
+                    if isinstance(cid, str) and not ObjectId.is_valid(cid):
+                        req_comp_codes.add(cid)
+                    else:
+                        c_doc = self.db.competencies.find_one({"$or": [{"_id": cid}, {"code": cid}, {"competency_id": cid}]})
+                        if c_doc:
+                            req_comp_codes.add(c_doc.get("code") or c_doc.get("competency_id") or str(cid))
+
+        gap_map = {}
+        critical_gap_codes = set()
+        high_gap_codes = set()
+        other_gap_codes = set()
+
+        try:
+            from app.skill_gaps.service import calculate_skill_gaps
+            gap_res = calculate_skill_gaps(self.db, user_id)
+            for g in gap_res.gaps:
+                code = g.competency_code
+                gap_size = float(g.gap_size)
+                is_gap = bool(g.is_gap)
+                cur_lvl = float(g.current_level) if g.current_level is not None else None
+                req_lvl = float(g.required_level) if g.required_level is not None else None
+                
+                gap_map[code] = {
+                    "is_gap": is_gap,
+                    "gap_size": gap_size,
+                    "current_level": cur_lvl,
+                    "required_level": req_lvl,
+                    "priority_label": g.priority,
+                }
+
+                if is_gap:
+                    if g.priority == "CRITICAL" or gap_size >= 1.0:
+                        critical_gap_codes.add(code)
+                    elif g.priority == "HIGH" or gap_size >= 0.5:
+                        high_gap_codes.add(code)
+                    else:
+                        other_gap_codes.add(code)
+        except Exception:
+            pass
+
+        # Fallback gap calculation if engine raised or returned empty
+        if not gap_map and reqs:
+            user_oid = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
+            for req in reqs:
+                code = req.get("competency_code")
+                cid = req.get("competency_id")
+                if not code and isinstance(cid, str) and not ObjectId.is_valid(cid):
+                    code = cid
+                elif not code and cid:
+                    c_doc = self.db.competencies.find_one({"$or": [{"_id": cid}, {"code": cid}, {"competency_id": cid}]})
+                    if c_doc:
+                        code = c_doc.get("code") or c_doc.get("competency_id")
+                if not code:
+                    continue
+
+                req_lvl = float(req.get("required_level", 3.0))
+
+                # Look up user competency profile
+                p_conditions = [
+                    {"user_id": user_oid},
+                    {"user_id": str(user_id)},
+                ]
+                comp_conditions = []
+                if cid:
+                    comp_conditions.extend([{"competency_id": cid}, {"competency_id": str(cid)}])
+                if code:
+                    comp_conditions.extend([{"competency_id": code}, {"competency_code": code}])
+
+                prof = None
+                if comp_conditions:
+                    prof = self.db.competency_profiles.find_one({
+                        "$and": [
+                            {"$or": p_conditions},
+                            {"$or": comp_conditions},
+                        ]
+                    })
+
+                cur_lvl = 1.0
+                if prof:
+                    cur_lvl = float(prof.get("current_level") if prof.get("current_level") is not None else (prof.get("level") or 1.0))
+
+                gap_size = max(0.0, round(req_lvl - cur_lvl, 2))
+                is_gap = gap_size > 0.0
+                priority_label = "CRITICAL" if gap_size >= 1.0 else ("HIGH" if gap_size >= 0.5 else "MEDIUM")
+                gap_map[code] = {
+                    "is_gap": is_gap,
+                    "gap_size": gap_size,
+                    "current_level": cur_lvl,
+                    "required_level": req_lvl,
+                    "priority_label": priority_label,
+                }
+                if is_gap:
+                    if gap_size >= 1.0:
+                        critical_gap_codes.add(code)
+                    elif gap_size >= 0.5:
+                        high_gap_codes.add(code)
+                    else:
+                        other_gap_codes.add(code)
+
+        cursor = self.db.quizzes.find({"status": {"$in": ["PUBLISHED", "ASSIGNED"]}})
+        candidate_quizzes = list(cursor)
+
+        relevant_quizzes = []
+        user_id_str = str(user_id)
+
+        for quiz in candidate_quizzes:
+            assigned_to = [str(x) for x in quiz.get("assigned_to", [])] + [str(x) for x in quiz.get("assigned_user_ids", [])]
+            comp_code = quiz.get("competency_code", "")
+            target_comps = set(quiz.get("target_competency_ids", []))
+            if comp_code:
+                target_comps.add(comp_code)
+
+            target_roles = set(quiz.get("target_role_ids", []))
+            target_desigs = set(quiz.get("target_designation_ids", []))
+
+            is_relevant = False
+            relevance_reason = None
+            relevance_explanation = None
+            sort_priority = 99
+            gap_size = 0.0
+            is_gap = False
+            cur_lvl = None
+            req_lvl = None
+
+            comp_gap_info = gap_map.get(comp_code)
+            if not comp_gap_info:
+                for tc in target_comps:
+                    if tc in gap_map:
+                        comp_gap_info = gap_map[tc]
+                        break
+
+            if comp_gap_info:
+                gap_size = comp_gap_info["gap_size"]
+                is_gap = comp_gap_info["is_gap"]
+                cur_lvl = comp_gap_info["current_level"]
+                req_lvl = comp_gap_info["required_level"]
+
+            # Criterion 1: Explicit Trainer Assignment
+            if user_id_str in assigned_to:
+                is_relevant = True
+                relevance_reason = "ASSIGNED_BY_TRAINER"
+                relevance_explanation = "Directly assigned by your trainer."
+                sort_priority = 1
+
+            # Criterion 2: Critical Competency Gap
+            elif target_comps.intersection(critical_gap_codes):
+                is_relevant = True
+                relevance_reason = "CRITICAL_GAP"
+                relevance_explanation = "Recommended because this is an active critical competency gap."
+                sort_priority = 2
+
+            # Criterion 3: High Competency Gap
+            elif target_comps.intersection(high_gap_codes):
+                is_relevant = True
+                relevance_reason = "HIGH_GAP"
+                relevance_explanation = "Targeted for your identified high-priority skill gap."
+                sort_priority = 3
+
+            # Criterion 4: Other Identified Gap
+            elif target_comps.intersection(other_gap_codes):
+                is_relevant = True
+                relevance_reason = "IDENTIFIED_GAP"
+                relevance_explanation = "Targeted remediation for your competency gap."
+                sort_priority = 4
+
+            # Criterion 5: Target Designation or Role Match (for non-required competencies)
+            elif (
+                (
+                    (user_desig_id and user_desig_id in target_desigs)
+                    or (user_desig and any(user_desig.lower() == td.lower() for td in target_desigs))
+                    or (role_code and role_code in target_roles)
+                    or (resolved_role_id and str(resolved_role_id) in target_roles)
+                    or (user.get("role") and user.get("role") in target_roles)
+                    or (user_role_id and str(user_role_id) in target_roles)
+                )
+                and not target_comps.intersection(req_comp_codes)
+            ):
+                is_relevant = True
+                relevance_reason = "ROLE_TARGETED"
+                relevance_explanation = f"Tailored for your official role ({user_desig or role_name})."
+                sort_priority = 5
+
+            # Criterion 6: Required Competency (Practice / Refresher even if met)
+            elif target_comps.intersection(req_comp_codes):
+                is_relevant = True
+                relevance_reason = "REQUIRED_COMPETENCY"
+                relevance_explanation = "Part of your official role competency requirements."
+                sort_priority = 6
+
+            if is_relevant:
+                quiz_copy = dict(quiz)
+                quiz_copy["relevance_reason"] = relevance_reason
+                quiz_copy["relevance_explanation"] = relevance_explanation
+                quiz_copy["priority"] = sort_priority
+                quiz_copy["is_gap"] = is_gap
+                quiz_copy["gap_size"] = gap_size
+                quiz_copy["current_level"] = cur_lvl
+                quiz_copy["required_level"] = req_lvl
+                
+                # Sanitize questions (hide correct answers and explanations)
+                safe_questions = []
+                for q in quiz.get("questions", []):
+                    safe_questions.append({
+                        "question_id": str(q.get("question_id", q.get("_id", ""))),
+                        "question": q.get("question", ""),
+                        "options": q.get("options", []),
+                        "difficulty": q.get("difficulty", "MEDIUM"),
+                        "source_chunks": q.get("source_chunks", []),
+                    })
+                quiz_copy["questions"] = safe_questions
+                relevant_quizzes.append(quiz_copy)
+
+        def _sort_key(item):
+            created_at = item.get("created_at")
+            created_ts = created_at.timestamp() if isinstance(created_at, datetime) else 0.0
+            return (
+                item.get("priority", 99),
+                -float(item.get("gap_size", 0.0) or 0.0),
+                -created_ts,
+            )
+
+        relevant_quizzes.sort(key=_sort_key)
+        return relevant_quizzes
+
+    def get_explicitly_assigned_quizzes(self, user_id: str) -> list[dict]:
+        """
+        SOURCE A — EXPLICIT ASSIGNMENT
+        Retrieve quizzes explicitly assigned to this official by a trainer/admin.
+        Does NOT depend on recommendation scoring.
+        """
+        user_id_str = str(user_id)
+        query = {
+            "$or": [
+                {"assigned_to": user_id_str},
+                {"assigned_user_ids": user_id_str},
+            ]
+        }
+        cursor = self.db.quizzes.find(query)
+        if hasattr(cursor, "sort"):
+            cursor = cursor.sort("created_at", -1)
+        raw_list = list(cursor)
+
+        # Batch lookup trainer names
+        trainer_ids = [q.get("trainer_id") for q in raw_list if q.get("trainer_id")]
+        trainer_map = {}
+        if trainer_ids and hasattr(self.db, "users"):
+            t_query = {"$or": [{"_id": {"$in": trainer_ids}}, {"_id": {"$in": [ObjectId(x) for x in trainer_ids if ObjectId.is_valid(x)]}}]}
+            for u in self.db.users.find(t_query):
+                trainer_map[str(u["_id"])] = u.get("full_name") or u.get("name") or "Curriculum Trainer"
+
+        assigned_quizzes = []
+        for q in raw_list:
+            q_copy = dict(q)
+            trainer_id_str = str(q.get("trainer_id", ""))
+            trainer_name = trainer_map.get(trainer_id_str) or q.get("trainer_name") or "Curriculum Trainer"
+            q_copy["trainer_name"] = trainer_name
+            q_copy["relevance_reason"] = "ASSIGNED_BY_TRAINER"
+            q_copy["relevance_explanation"] = f"Directly assigned by {trainer_name}."
+            q_copy["priority"] = 1
+            q_copy["is_also_recommended"] = False
+
+            # Sanitize questions (hide correct answers and explanations)
+            safe_questions = []
+            for qu in q.get("questions", []):
+                safe_questions.append({
+                    "question_id": str(qu.get("question_id", qu.get("_id", ""))),
+                    "question": qu.get("question", ""),
+                    "options": qu.get("options", []),
+                    "difficulty": qu.get("difficulty", q.get("difficulty", "MEDIUM")),
+                    "source_chunks": qu.get("source_chunks", []),
+                })
+            q_copy["questions"] = safe_questions
+            assigned_quizzes.append(q_copy)
+
+        return assigned_quizzes
+
+    def recommend_quizzes_for_official(self, user_id: str, limit: int = 5) -> list[dict]:
+        """
+        SOURCE B — SYSTEM RECOMMENDATION
+        Deterministic recommendation engine for government workforce competency development.
+        
+        Evaluates:
+        official -> role/designation -> required competencies -> current competency -> competency gap -> relevant quiz
+        
+        Hard Relevance Filter (Phase 5):
+        Must target role requirement, active gap, or specific role profile.
+        
+        Scoring Formula (Phase 4):
+        40% competency-gap relevance + 25% designation/role relevance + 15% gap severity
+        + 10% difficulty suitability + 10% prerequisite compatibility
+        """
+        u_oid = ObjectId(user_id) if ObjectId.is_valid(user_id) else None
+        user = None
+        if u_oid:
+            user = self.db.users.find_one({"_id": u_oid})
+        if not user:
+            user = self.db.users.find_one({"_id": str(user_id)})
+        if not user:
+            return []
+
+        user_dept = user.get("department")
+        user_desig = user.get("government_designation") or user.get("designation")
+        user_desig_id = user.get("designation_id")
+        user_role_id = user.get("role_id")
+
+        from app.roles.resolver import resolve_role_for_user
+        resolved_role_id = user_role_id
+        if not resolved_role_id and (user_dept or user_desig):
+            resolved_role_id = resolve_role_for_user(self.db, user_dept, user_desig)
+
+        role_doc = None
+        if resolved_role_id:
+            u_r_oid = ObjectId(resolved_role_id) if ObjectId.is_valid(resolved_role_id) else resolved_role_id
+            if hasattr(self.db, "roles"):
+                role_doc = self.db.roles.find_one({"$or": [{"_id": u_r_oid}, {"role_code": resolved_role_id}, {"role_id": resolved_role_id}]})
+
+        role_code = (role_doc.get("role_code") or role_doc.get("role_id")) if role_doc else (user.get("role") or user_role_id)
+        role_name = role_doc.get("role_name") if role_doc else (user_desig or "Government Official")
+
+        req_comp_codes = set()
+        role_query_ids = []
+        if resolved_role_id:
+            role_query_ids.append(resolved_role_id)
+            if ObjectId.is_valid(resolved_role_id):
+                role_query_ids.append(ObjectId(resolved_role_id))
+        if user_role_id:
+            role_query_ids.append(user_role_id)
+            if ObjectId.is_valid(user_role_id):
+                role_query_ids.append(ObjectId(user_role_id))
+        if user.get("role"):
+            role_query_ids.append(user["role"])
+        if role_doc:
+            role_query_ids.append(role_doc.get("_id"))
+            if role_doc.get("role_code"):
+                role_query_ids.append(role_doc["role_code"])
+            if role_doc.get("role_id"):
+                role_query_ids.append(role_doc["role_id"])
+
+        reqs = []
+        if role_query_ids and hasattr(self.db, "role_requirements"):
+            reqs = list(self.db.role_requirements.find({"role_id": {"$in": role_query_ids}}))
+            for r in reqs:
+                if r.get("competency_code"):
+                    req_comp_codes.add(r["competency_code"])
+                elif r.get("competency_id"):
+                    cid = r["competency_id"]
+                    if isinstance(cid, str) and not ObjectId.is_valid(cid):
+                        req_comp_codes.add(cid)
+                    else:
+                        c_doc = self.db.competencies.find_one({"$or": [{"_id": cid}, {"code": cid}, {"competency_id": cid}]})
+                        if c_doc:
+                            req_comp_codes.add(c_doc.get("code") or c_doc.get("competency_id") or str(cid))
+
+        gap_map = {}
+        try:
+            from app.skill_gaps.service import calculate_skill_gaps
+            gap_res = calculate_skill_gaps(self.db, user_id)
+            for g in gap_res.gaps:
+                code = g.competency_code
+                gap_size = float(g.gap_size)
+                is_gap = bool(g.is_gap)
+                cur_lvl = float(g.current_level) if g.current_level is not None else None
+                req_lvl = float(g.required_level) if g.required_level is not None else None
+                
+                gap_map[code] = {
+                    "is_gap": is_gap,
+                    "gap_size": gap_size,
+                    "current_level": cur_lvl,
+                    "required_level": req_lvl,
+                    "priority_label": g.priority,
+                    "competency_name": g.competency_name,
+                }
+        except Exception:
+            pass
+
+        # Fallback gap calculation if engine raised or returned empty
+        if not gap_map and reqs:
+            user_oid = ObjectId(user_id) if ObjectId.is_valid(user_id) else user_id
+            for req in reqs:
+                code = req.get("competency_code")
+                cid = req.get("competency_id")
+                comp_name = None
+                if not code and isinstance(cid, str) and not ObjectId.is_valid(cid):
+                    code = cid
+                elif cid:
+                    c_doc = self.db.competencies.find_one({"$or": [{"_id": cid}, {"code": cid}, {"competency_id": cid}]})
+                    if c_doc:
+                        code = c_doc.get("code") or c_doc.get("competency_id")
+                        comp_name = c_doc.get("name") or c_doc.get("competency_name")
+                if not code:
+                    continue
+
+                req_lvl = float(req.get("required_level", 3.0))
+
+                p_conditions = [
+                    {"user_id": user_oid},
+                    {"user_id": str(user_id)},
+                ]
+                comp_conditions = []
+                if cid:
+                    comp_conditions.extend([{"competency_id": cid}, {"competency_id": str(cid)}])
+                if code:
+                    comp_conditions.extend([{"competency_id": code}, {"competency_code": code}])
+
+                prof = None
+                if comp_conditions:
+                    prof = self.db.competency_profiles.find_one({
+                        "$and": [
+                            {"$or": p_conditions},
+                            {"$or": comp_conditions},
+                        ]
+                    })
+
+                cur_lvl = 1.0
+                if prof:
+                    cur_lvl = float(prof.get("current_level") if prof.get("current_level") is not None else (prof.get("level") or 1.0))
+
+                gap_size = max(0.0, round(req_lvl - cur_lvl, 2))
+                is_gap = gap_size > 0.0
+                gap_map[code] = {
+                    "is_gap": is_gap,
+                    "gap_size": gap_size,
+                    "current_level": cur_lvl,
+                    "required_level": req_lvl,
+                    "priority_label": "CRITICAL" if gap_size >= 1.0 else ("HIGH" if gap_size >= 0.5 else "MEDIUM"),
+                    "competency_name": comp_name or code.replace("_", " ").title(),
+                }
+
+        # Candidate pool: published quizzes
+        cursor = self.db.quizzes.find({"status": {"$in": ["PUBLISHED", "ASSIGNED"]}})
+        candidate_quizzes = list(cursor)
+
+        recommended_items = []
+        for quiz in candidate_quizzes:
+            comp_code = quiz.get("competency_code", "")
+            target_comps = set(quiz.get("target_competency_ids", []))
+            if comp_code:
+                target_comps.add(comp_code)
+
+            target_roles = set(quiz.get("target_role_ids", []))
+            target_desigs = set(quiz.get("target_designation_ids", []))
+
+            # ----------------------------------------------------
+            # PHASE 5: HARD RELEVANCE FILTER
+            # Quiz must satisfy at least one strong condition:
+            # 1. Targets a competency required for official's role
+            # 2. Targets a competency where official has identified gap
+            # 3. Targets official's role or designation directly
+            # ----------------------------------------------------
+            is_role_required = bool(target_comps.intersection(req_comp_codes))
+            
+            gap_competencies = {code for code, info in gap_map.items() if info.get("is_gap")}
+            has_active_gap = bool(target_comps.intersection(gap_competencies))
+            
+            matches_role_or_desig = (
+                (user_desig_id and user_desig_id in target_desigs)
+                or (user_desig and any(user_desig.lower() == td.lower() for td in target_desigs))
+                or (role_code and role_code in target_roles)
+                or (resolved_role_id and str(resolved_role_id) in target_roles)
+                or (user.get("role") and user.get("role") in target_roles)
+                or (user_role_id and str(user_role_id) in target_roles)
+            )
+
+            # HARD FILTER: If none of the 3 conditions are met, DISQUALIFY immediately.
+            if not (is_role_required or has_active_gap or matches_role_or_desig):
+                continue
+
+            # Find matching gap info if available
+            comp_gap_info = gap_map.get(comp_code)
+            if not comp_gap_info:
+                for tc in target_comps:
+                    if tc in gap_map:
+                        comp_gap_info = gap_map[tc]
+                        break
+
+            gap_size = comp_gap_info["gap_size"] if comp_gap_info else 0.0
+            is_gap = comp_gap_info["is_gap"] if comp_gap_info else False
+            cur_lvl = comp_gap_info["current_level"] if comp_gap_info else None
+            req_lvl = comp_gap_info["required_level"] if comp_gap_info else None
+            comp_name = (comp_gap_info.get("competency_name") if comp_gap_info else None) or (comp_code.replace("_", " ").title() if comp_code else "Target Domain")
+
+            # ----------------------------------------------------
+            # PHASE 4: DETERMINISTIC PROTOTYPE SCORING
+            # 40% Competency-Gap Relevance
+            # 25% Designation/Role Relevance
+            # 15% Gap Severity
+            # 10% Difficulty Suitability
+            # 10% Prerequisite Compatibility
+            # ----------------------------------------------------
+            # 1. Competency-Gap Relevance (40%)
+            if is_gap:
+                s_gap = 1.0
+            elif is_role_required:
+                s_gap = 0.6
+            else:
+                s_gap = 0.3
+
+            # 2. Designation / Role Relevance (25%)
+            if matches_role_or_desig:
+                s_role = 1.0
+            elif is_role_required:
+                s_role = 0.8
+            else:
+                s_role = 0.4
+
+            # 3. Gap Severity (15%)
+            s_sev = min(1.0, gap_size / 3.0) if gap_size > 0 else 0.0
+
+            # 4. Difficulty Suitability (10%)
+            q_diff = (quiz.get("difficulty") or "MEDIUM").upper()
+            ref_level = cur_lvl if cur_lvl is not None else 2.5
+            if ref_level < 2.5:
+                s_diff = 1.0 if q_diff == "EASY" else (0.7 if q_diff == "MEDIUM" else 0.4)
+            elif ref_level <= 3.8:
+                s_diff = 1.0 if q_diff == "MEDIUM" else (0.8 if q_diff == "EASY" else 0.7)
+            else:
+                s_diff = 1.0 if q_diff == "HARD" else (0.8 if q_diff == "MEDIUM" else 0.5)
+
+            # 5. Prerequisite Compatibility (10%)
+            s_pre = 1.0 if (cur_lvl is None or cur_lvl >= 1.0) else 0.6
+
+            score = round(0.40 * s_gap + 0.25 * s_role + 0.15 * s_sev + 0.10 * s_diff + 0.10 * s_pre, 3)
+
+            # ----------------------------------------------------
+            # PHASE 10: EXPLAINABILITY (Human-readable reason)
+            # ----------------------------------------------------
+            if is_gap and cur_lvl is not None and req_lvl is not None:
+                reason = f"Recommended because {comp_name} is a current competency gap for your role (Current: {cur_lvl:.2f} / Required: {req_lvl:.2f}, Gap: -{gap_size:.2f})."
+            elif is_gap:
+                reason = f"Recommended because {comp_name} is an active competency gap for your role."
+            elif is_role_required:
+                reason = f"Recommended for continuous practice in {comp_name}, a required competency for your role."
+            else:
+                reason = f"Recommended because this module is tailored for your official role ({role_name})."
+
+            # Prepare safe quiz document
+            safe_questions = []
+            for qu in quiz.get("questions", []):
+                safe_questions.append({
+                    "question_id": str(qu.get("question_id", qu.get("_id", ""))),
+                    "question": qu.get("question", ""),
+                    "options": qu.get("options", []),
+                    "difficulty": qu.get("difficulty", quiz.get("difficulty", "MEDIUM")),
+                    "source_chunks": qu.get("source_chunks", []),
+                })
+
+            safe_quiz = dict(quiz)
+            safe_quiz["questions"] = safe_questions
+            safe_quiz["relevance_reason"] = "CRITICAL_GAP" if (is_gap and gap_size >= 1.0) else ("HIGH_GAP" if is_gap else ("REQUIRED_COMPETENCY" if is_role_required else "ROLE_TARGETED"))
+            safe_quiz["relevance_explanation"] = reason
+            safe_quiz["priority"] = 2 if (is_gap and gap_size >= 1.0) else (3 if is_gap else (6 if is_role_required else 5))
+            safe_quiz["is_gap"] = is_gap
+            safe_quiz["gap_size"] = gap_size
+            safe_quiz["current_level"] = cur_lvl
+            safe_quiz["required_level"] = req_lvl
+
+            recommended_items.append({
+                "quiz": safe_quiz,
+                "primary_competency": comp_code or (list(target_comps)[0] if target_comps else "GENERAL"),
+                "current_level": cur_lvl,
+                "required_level": req_lvl,
+                "gap": gap_size,
+                "recommendation_score": score,
+                "reason": reason,
+                "role_name": role_name,
+            })
+
+        # Rank by score DESC -> gap DESC -> created_at DESC
+        def _rec_sort_key(item):
+            created_at = item["quiz"].get("created_at")
+            created_ts = created_at.timestamp() if isinstance(created_at, datetime) else 0.0
+            return (
+                -item["recommendation_score"],
+                -float(item.get("gap") or 0.0),
+                -created_ts,
+            )
+
+        recommended_items.sort(key=_rec_sort_key)
+        return recommended_items[:limit]
+
+    def get_official_quiz_feed(self, user_id: str, limit: int = 5) -> dict:
+        """
+        PHASE 2 & 8 & 9: Complete Official Quiz Feed.
+        Separates Source A (Trainer-Assigned) from Source B (System-Recommended).
+        Applies Deduplication: if assigned and recommended, stays in Assigned with a badge.
+        """
+        assigned_quizzes = self.get_explicitly_assigned_quizzes(user_id)
+        # Fetch candidate recommendations (buffer slightly to handle deduplication)
+        buffer_limit = limit + len(assigned_quizzes)
+        all_recommended = self.recommend_quizzes_for_official(user_id, limit=buffer_limit)
+
+        assigned_ids = {str(q["_id"]) for q in assigned_quizzes}
+        recommended_ids_in_assigned = {
+            str(r["quiz"]["_id"]) for r in all_recommended if str(r["quiz"]["_id"]) in assigned_ids
+        }
+
+        # Deduplication flag for assigned quizzes
+        for q in assigned_quizzes:
+            if str(q["_id"]) in recommended_ids_in_assigned:
+                q["is_also_recommended"] = True
+                # Keep prompt Phase 8 badge intent
+                q["relevance_explanation"] = "Directly assigned by trainer. Also relevant to your active competency gap."
+
+        # Filter out from recommended if already assigned
+        final_recommended = [
+            r for r in all_recommended if str(r["quiz"]["_id"]) not in assigned_ids
+        ][:limit]
+
+        return {
+            "assigned": assigned_quizzes,
+            "recommended": final_recommended,
+            "meta": {
+                "total_assigned": len(assigned_quizzes),
+                "total_recommended": len(final_recommended),
+                "recommendation_reasoning": True,
+            },
+        }
+
+
+def is_quiz_relevant_to_user(database: Database, user: dict, quiz: dict) -> bool:
+    """
+    Check if a published/assigned quiz is relevant to a specific user.
+    Used for authorization boundaries so officials cannot take unauthorized quizzes.
+    """
+    if not user:
+        return False
+        
+    user_access_role = user.get("access_role")
+    if user_access_role in ("TRAINER", "ADMIN"):
+        return True
+
+    user_id_str = str(user.get("_id", ""))
+    assigned_to = [str(x) for x in quiz.get("assigned_to", [])] + [str(x) for x in quiz.get("assigned_user_ids", [])]
+    if user_id_str in assigned_to:
+        return True
+
+    user_dept = user.get("department")
+    user_desig = user.get("government_designation") or user.get("designation")
+    user_desig_id = user.get("designation_id")
+    user_role_id = user.get("role_id")
+
+    from app.roles.resolver import resolve_role_for_user
+    resolved_role_id = user_role_id
+    if not resolved_role_id and (user_dept or user_desig):
+        resolved_role_id = resolve_role_for_user(database, user_dept, user_desig)
+
+    role_doc = None
+    if resolved_role_id:
+        u_r_oid = ObjectId(resolved_role_id) if ObjectId.is_valid(resolved_role_id) else resolved_role_id
+        if hasattr(database, "roles"):
+            role_doc = database.roles.find_one({"$or": [{"_id": u_r_oid}, {"role_code": resolved_role_id}, {"role_id": resolved_role_id}]})
+
+    role_code = (role_doc.get("role_code") or role_doc.get("role_id")) if role_doc else (user.get("role") or user_role_id)
+
+    # Check target designations and roles
+    target_desigs = set(quiz.get("target_designation_ids", []))
+    target_roles = set(quiz.get("target_role_ids", []))
+
+    if (
+        (user_desig_id and user_desig_id in target_desigs)
+        or (user_desig and any(user_desig.lower() == td.lower() for td in target_desigs))
+        or (role_code and role_code in target_roles)
+        or (resolved_role_id and str(resolved_role_id) in target_roles)
+        or (user.get("role") and user.get("role") in target_roles)
+        or (user_role_id and str(user_role_id) in target_roles)
+    ):
+        return True
+
+    # Check competencies against role requirements
+    comp_code = quiz.get("competency_code", "")
+    target_comps = set(quiz.get("target_competency_ids", []))
+    if comp_code:
+        target_comps.add(comp_code)
+
+    role_query_ids = []
+    if resolved_role_id:
+        role_query_ids.append(resolved_role_id)
+        if ObjectId.is_valid(resolved_role_id):
+            role_query_ids.append(ObjectId(resolved_role_id))
+    if user_role_id:
+        role_query_ids.append(user_role_id)
+        if ObjectId.is_valid(user_role_id):
+            role_query_ids.append(ObjectId(user_role_id))
+    if user.get("role"):
+        role_query_ids.append(user["role"])
+    if role_doc:
+        role_query_ids.append(role_doc.get("_id"))
+        if role_doc.get("role_code"):
+            role_query_ids.append(role_doc["role_code"])
+        if role_doc.get("role_id"):
+            role_query_ids.append(role_doc["role_id"])
+
+    if role_query_ids and hasattr(database, "role_requirements"):
+        reqs = list(database.role_requirements.find({"role_id": {"$in": role_query_ids}}))
+        req_comp_codes = set()
+        for r in reqs:
+            if r.get("competency_code"):
+                req_comp_codes.add(r["competency_code"])
+            elif r.get("competency_id"):
+                cid = r["competency_id"]
+                if isinstance(cid, str) and not ObjectId.is_valid(cid):
+                    req_comp_codes.add(cid)
+                else:
+                    c_doc = database.competencies.find_one({"$or": [{"_id": cid}, {"code": cid}, {"competency_id": cid}]})
+                    if c_doc:
+                        req_comp_codes.add(c_doc.get("code") or c_doc.get("competency_id") or str(cid))
+        if target_comps.intersection(req_comp_codes):
+            return True
+
+    return False
