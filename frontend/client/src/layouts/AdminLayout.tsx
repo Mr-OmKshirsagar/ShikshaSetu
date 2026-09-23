@@ -53,12 +53,12 @@ export function AdminLayout({ children, activePage, onNavigate }: AdminLayoutPro
       userRoleSubtitle="Director (Capability & Human Resources)"
       bgClassName="bg-[#f4f7fb]"
       roleTheme={{
-        activeNavBg: "bg-[#e8f5f3]",
-        activeNavText: "text-[#087f76]",
-        activeIndicator: "bg-[#087f76]",
-        hoverNavBg: "hover:bg-teal-50/50 hover:text-[#087f76]",
-        avatarBg: "bg-teal-100 text-[#087f76]",
-        badgeDotBg: "bg-emerald-500",
+        activeNavBg: "bg-purple-50",
+        activeNavText: "text-[#7c3aed]",
+        activeIndicator: "bg-[#7c3aed]",
+        hoverNavBg: "hover:bg-purple-50/50 hover:text-[#7c3aed]",
+        avatarBg: "bg-purple-100 text-[#7c3aed]",
+        badgeDotBg: "bg-purple-500",
         headerTitleColor: "text-[#123057]",
       }}
     >
