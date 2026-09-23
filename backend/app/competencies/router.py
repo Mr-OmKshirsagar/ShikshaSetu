@@ -7,13 +7,15 @@ from app.core.analytics_cache import (
     get_user_competencies_cache,
     set_user_competencies_cache,
 )
+from app.core.database import get_or_reconnect_database
 
 router = APIRouter(prefix="/competencies", tags=["competencies"])
 
 
 @router.get("", response_model=list[CompetencyResponse])
 def get_competencies(request: Request) -> list[dict]:
-    return service.list_competencies(getattr(request.app.state, "database", None))
+    db = get_or_reconnect_database(request.app)
+    return service.list_competencies(db)
 
 
 @router.get("/me", response_model=list[UserApplicableCompetencyResponse])
@@ -25,8 +27,9 @@ def get_my_competencies(
     cached = get_user_competencies_cache(user_id)
     if cached is not None:
         return cached
+    db = get_or_reconnect_database(request.app)
     data = service.list_user_competencies(
-        getattr(request.app.state, "database", None),
+        db,
         user_id,
     )
     set_user_competencies_cache(user_id, data)
@@ -35,5 +38,5 @@ def get_my_competencies(
 
 @router.get("/{competency_id}", response_model=CompetencyResponse)
 def get_competency(request: Request, competency_id: str) -> dict:
-    return service.get_competency(getattr(request.app.state, "database", None), competency_id)
-
+    db = get_or_reconnect_database(request.app)
+    return service.get_competency(db, competency_id)

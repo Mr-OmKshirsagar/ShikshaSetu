@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   PenTool,
   UserRound,
+  Sparkles,
 } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { DashboardShell, DashboardNavItem } from "./DashboardShell";
@@ -27,6 +28,7 @@ export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayou
     { id: "Question Review", label: isHindi ? "समीक्षा स्टूडियो" : "Question Review", icon: CheckSquare },
     { id: "Quiz Studio", label: isHindi ? "प्रश्नोत्तरी स्टूडियो" : "Quiz Studio", icon: PenTool },
     { id: "Learner Results", label: isHindi ? "प्रशिक्षु परिणाम" : "Learner Results", icon: BarChart2 },
+    { id: "Trainer Talent Passport", label: isHindi ? "प्रशिक्षक टैलेंट पासपोर्ट" : "Trainer Talent Passport", icon: Sparkles },
     { id: "Profile", label: isHindi ? "प्रोफ़ाइल" : "Profile", icon: UserRound },
   ];
 

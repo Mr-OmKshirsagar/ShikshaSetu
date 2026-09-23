@@ -36,7 +36,8 @@ from app.rag.groundedness import (
     score_groundedness,
 )
 from app.rag.hybrid_retrieval import retrieve_for_chatbot
-from app.rag.intent_router import QueryIntent, classify_intent
+from app.assistant.query_cache import get_query_cache
+from app.rag.intent_router import QueryIntent, classify_intent, STANDARD_OFF_TOPIC_REFUSAL
 from app.rag.reranker import mmr_rerank
 from .context import build_user_capability_context
 from .prompts import CAPABILITY_COPILOT_SYSTEM_PROMPT, build_copilot_user_prompt
@@ -102,6 +103,7 @@ class AssistantService:
                 "my gap", "my skill", "my score", "priority gap", "highest priority",
                 "what are my skill gaps", "what is my skill gap", "what is my current capability",
                 "what is my required level", "show my skill gaps", "view my gaps",
+                "biggest skill gap", "what is my biggest gap", "how many priority gaps",
             )
         )
 
@@ -114,7 +116,65 @@ class AssistantService:
                 "recommend training", "recommend for my current role", "recommendation for my role",
                 "suggest courses", "courses for my role", "courses for my current role",
                 "recommend igot courses for my current role", "show my recommendations",
-                "what courses should i take",
+                "what courses should i take", "which course should i take",
+            )
+        )
+
+    def _is_assigned_quiz_query(self, message: str) -> bool:
+        msg_lower = message.lower()
+        return any(
+            w in msg_lower
+            for w in (
+                "assigned quiz", "assigned to me", "quizzes assigned", "my assigned",
+                "assigned tests", "quiz assigned by trainer", "trainer assigned",
+                "what quizzes are assigned", "do i have any quizzes assigned",
+                "show my assigned quizzes", "view my assigned quizzes",
+            )
+        )
+
+    def _is_recommended_quiz_query(self, message: str) -> bool:
+        msg_lower = message.lower()
+        return any(
+            w in msg_lower
+            for w in (
+                "recommend quiz", "recommend quizzes", "recommended quiz", "recommended quizzes",
+                "which quiz should i take", "quiz should i take", "suggest quiz", "suggest quizzes",
+                "quizzes for my role", "quiz for my gap", "quiz for my role",
+                "why was this quiz recommended", "quizzes recommended for me",
+            )
+        )
+
+    def _is_competency_score_query(self, message: str) -> bool:
+        msg_lower = message.lower()
+        return any(
+            w in msg_lower
+            for w in (
+                "my competency score", "my competency level", "what is my competency level",
+                "what is my current capability", "my current competency", "what are my scores",
+                "my proficiency level", "show my competency", "view my competency",
+                "what does my competency score mean",
+            )
+        )
+
+    def _is_dashboard_overview_query(self, message: str) -> bool:
+        msg_lower = message.lower()
+        return any(
+            w in msg_lower
+            for w in (
+                "what does my dashboard show", "my dashboard", "show my progress",
+                "my learning progress", "how many activities have i completed",
+                "my evidence summary", "my progress summary", "dashboard summary",
+                "who am i", "about me", "tell me about myself", "my profile",
+            )
+        )
+
+    def _is_platform_faq_query(self, message: str) -> bool:
+        msg_lower = message.lower()
+        return any(
+            w in msg_lower
+            for w in (
+                "what is shikshasetu", "how does shikshasetu work", "what does competency intelligence mean",
+                "how does the recommendation engine work", "what is the purpose of shikshasetu",
             )
         )
 
@@ -127,8 +187,8 @@ class AssistantService:
     ) -> AssistantChatResponse:
         """
         Process a chat request end-to-end with strict latency hardening.
-        Deterministic queries (skill gaps, recommendations) bypass LLM.
-        Knowledge queries use lean context and scoped RAG.
+        Deterministic queries (skill gaps, recommendations, quizzes) bypass LLM.
+        Knowledge queries use lean context, scoped RAG, and per-user caching.
         """
         t_start = time.perf_counter()
         t_ctx_start = 0.0
@@ -140,6 +200,18 @@ class AssistantService:
 
         message = request.message
 
+        # ── 0. Query Cache Lookup (sub-5ms) ──────────────────────────────────
+        cache = get_query_cache()
+        cached = cache.get(user_id, message, request.current_competency_code)
+        if cached is not None:
+            t_total = (time.perf_counter() - t_start) * 1000
+            cached_copy = cached.model_copy(deep=True)
+            if cached_copy.context_summary:
+                cached_copy.context_summary.setdefault("latency_metrics", {})
+                cached_copy.context_summary["latency_metrics"]["total_ms"] = round(t_total, 2)
+                cached_copy.context_summary["latency_metrics"]["cache_hit"] = True
+            return cached_copy
+
         # ── 1. Intent routing ─────────────────────────────────────────────────
         intent_result = classify_intent(message)
         logger.debug(
@@ -147,41 +219,83 @@ class AssistantService:
             intent_result.intent, intent_result.confidence, intent_result.reason,
         )
 
-        # ── 2. Immediate refusal for out-of-scope / injection ─────────────────
+        # ── 2. Immediate refusal for out-of-scope / injection (< 2ms) ─────────
         if intent_result.refuse:
-            refusal = (
-                "I'm the Karmayogi AI Co-Pilot for ShikshaSetu, focused on your "
-                "competency development. I'm not able to help with that request."
-            )
+            refusal = STANDARD_OFF_TOPIC_REFUSAL
             t_total = (time.perf_counter() - t_start) * 1000
-            return AssistantChatResponse(
+            resp = AssistantChatResponse(
                 answer=refusal,
                 sources=[],
                 context_summary={
                     "intent": intent_result.intent.value,
                     "refused": True,
-                    "latency_metrics": {"total_ms": round(t_total, 2)},
+                    "latency_metrics": {
+                        "total_ms": round(t_total, 2),
+                        "cache_hit": False,
+                        "retrieval_ms": 0.0,
+                        "llm_ms": 0.0,
+                    },
                 },
                 suggested_actions=self._generate_suggested_actions(message, {}),
                 model_provider="rule-based-refusal",
             )
+            cache.set(user_id, message, resp, request.current_competency_code)
+            return resp
 
-        # ── 3. Query Intent Fast Paths ────────────────────────────────────────
+        # ── 3. Query Intent Fast Paths (Zero LLM, < 100ms) ────────────────────
+        is_faq = self._is_platform_faq_query(message)
+        is_assigned_quiz = self._is_assigned_quiz_query(message)
+        is_rec_quiz = self._is_recommended_quiz_query(message)
+        is_score = self._is_competency_score_query(message)
+        is_dash = self._is_dashboard_overview_query(message)
         is_gap = self._is_gap_query(message)
         is_rec = self._is_rec_query(message)
 
-        if is_gap or is_rec:
+        if is_faq:
+            answer = self._generate_deterministic_platform_faq_response(message)
+            t_total = (time.perf_counter() - t_start) * 1000
+            resp = AssistantChatResponse(
+                answer=answer,
+                sources=[],
+                context_summary={
+                    "intent": "PLATFORM_FAQ_FAST_PATH",
+                    "latency_metrics": {
+                        "total_ms": round(t_total, 2),
+                        "cache_hit": False,
+                        "context_ms": 0.0,
+                        "llm_ms": 0.0,
+                    },
+                },
+                suggested_actions=self._generate_suggested_actions(message, {}),
+                model_provider="rule-based-faq",
+            )
+            cache.set(user_id, message, resp, request.current_competency_code)
+            return resp
+
+        if is_assigned_quiz or is_rec_quiz or is_score or is_dash or is_gap or is_rec:
             t_ctx_start = time.perf_counter()
             context_data = build_user_capability_context(
                 self.db,
                 user_id,
                 request.current_competency_code,
-                include_recommendations=is_rec,
+                include_recommendations=(is_rec or is_dash),
                 use_cache=True,
             )
             t_ctx_end = time.perf_counter()
 
-            if is_rec:
+            if is_assigned_quiz:
+                answer = self._generate_deterministic_assigned_quizzes_response(message, context_data)
+                citations = []
+            elif is_rec_quiz:
+                answer = self._generate_deterministic_recommended_quizzes_response(message, context_data)
+                citations = []
+            elif is_score:
+                answer = self._generate_deterministic_competencies_response(message, context_data)
+                citations = []
+            elif is_dash:
+                answer = self._generate_deterministic_dashboard_response(message, context_data)
+                citations = self._build_recommendation_citations(context_data)[:1] if context_data.get("recommendations") else []
+            elif is_rec:
                 answer = self._generate_deterministic_recommendations_response(message, context_data)
                 citations = self._build_recommendation_citations(context_data)
             else:
@@ -191,7 +305,7 @@ class AssistantService:
             suggested_actions = self._generate_suggested_actions(message, context_data)
             t_total = (time.perf_counter() - t_start) * 1000
 
-            return AssistantChatResponse(
+            resp = AssistantChatResponse(
                 answer=answer,
                 sources=citations,
                 context_summary={
@@ -201,6 +315,7 @@ class AssistantService:
                     "rag_chunks_used": 0,
                     "latency_metrics": {
                         "total_ms": round(t_total, 2),
+                        "cache_hit": False,
                         "context_ms": round((t_ctx_end - t_ctx_start) * 1000, 2),
                         "llm_ms": 0.0,
                     },
@@ -208,6 +323,8 @@ class AssistantService:
                 suggested_actions=suggested_actions,
                 model_provider="rule-based-fast",
             )
+            cache.set(user_id, message, resp, request.current_competency_code)
+            return resp
 
         # ── 4. RAG / Knowledge / Hybrid Path ──────────────────────────────────
         context_data: Dict[str, Any] = {}
@@ -235,14 +352,14 @@ class AssistantService:
                         if getattr(self.settings, "rag_chat_vector_enabled", False)
                         else None
                     ),
-                    top_k_keyword=min(self.settings.rag_top_k_keyword, 10),
-                    top_k_vector=min(self.settings.rag_top_k_vector, 10),
+                    top_k_keyword=min(self.settings.rag_top_k_keyword, 3),
+                    top_k_vector=min(self.settings.rag_top_k_vector, 3),
                     competency_code=request.current_competency_code,
                 )
                 reranked_chunks = mmr_rerank(
                     candidates=raw_candidates,
                     query=message,
-                    top_k=min(self.settings.rag_rerank_top_k, 4),
+                    top_k=min(self.settings.rag_rerank_top_k, 3),
                     mmr_lambda=self.settings.rag_mmr_lambda,
                     embedding_provider=(
                         self._embedding_provider
@@ -355,13 +472,15 @@ class AssistantService:
             context_summary["groundedness_score"] = gnd.score
             context_summary["groundedness_passed"] = gnd.is_grounded
 
-        return AssistantChatResponse(
+        final_resp = AssistantChatResponse(
             answer=answer,
             sources=api_citations,
             context_summary=context_summary,
             suggested_actions=suggested_actions,
             model_provider=provider_name,
         )
+        cache.set(user_id, message, final_resp, request.current_competency_code)
+        return final_resp
 
     # ── Server-Sent Events (SSE) Streaming generator ──────────────────────────
 
@@ -379,15 +498,26 @@ class AssistantService:
         t_start = time.perf_counter()
         message = request.message
 
+        # 0. Query Cache Lookup (sub-5ms)
+        cache = get_query_cache()
+        cached = cache.get(user_id, message, request.current_competency_code)
+        if cached is not None:
+            yield f"data: {json.dumps({'type': 'status', 'stage': 'thinking', 'message': 'Thinking...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'delta', 'delta': cached.answer})}\n\n"
+            cached_dict = cached.model_dump()
+            cached_dict.setdefault("context_summary", {})
+            if "latency_metrics" not in cached_dict["context_summary"]:
+                cached_dict["context_summary"]["latency_metrics"] = {}
+            cached_dict["context_summary"]["latency_metrics"]["cache_hit"] = True
+            yield f"data: {json.dumps({'type': 'done', 'response': cached_dict})}\n\n"
+            return
+
         yield f"data: {json.dumps({'type': 'status', 'stage': 'thinking', 'message': 'Thinking...'})}\n\n"
 
         # 1. Intent Routing
         intent_result = classify_intent(message)
         if intent_result.refuse:
-            refusal = (
-                "I'm the Karmayogi AI Co-Pilot for ShikshaSetu, focused on your "
-                "competency development. I'm not able to help with that request."
-            )
+            refusal = STANDARD_OFF_TOPIC_REFUSAL
             resp = AssistantChatResponse(
                 answer=refusal,
                 sources=[],
@@ -395,25 +525,56 @@ class AssistantService:
                 suggested_actions=self._generate_suggested_actions(message, {}),
                 model_provider="rule-based-refusal",
             )
+            cache.set(user_id, message, resp, request.current_competency_code)
             yield f"data: {json.dumps({'type': 'delta', 'delta': refusal})}\n\n"
             yield f"data: {json.dumps({'type': 'done', 'response': resp.model_dump()})}\n\n"
             return
 
-        # 2. Fast Path Routing
+        # 2. Fast Path Routing (Zero LLM, < 100ms)
+        is_faq = self._is_platform_faq_query(message)
+        is_assigned_quiz = self._is_assigned_quiz_query(message)
+        is_rec_quiz = self._is_recommended_quiz_query(message)
+        is_score = self._is_competency_score_query(message)
+        is_dash = self._is_dashboard_overview_query(message)
         is_gap = self._is_gap_query(message)
         is_rec = self._is_rec_query(message)
 
-        if is_gap or is_rec:
+        if is_faq:
+            answer = self._generate_deterministic_platform_faq_response(message)
+            t_total = (time.perf_counter() - t_start) * 1000
+            final_resp = AssistantChatResponse(
+                answer=answer,
+                sources=[],
+                context_summary={"intent": "PLATFORM_FAQ_FAST_PATH", "latency_metrics": {"total_ms": round(t_total, 2)}},
+                suggested_actions=self._generate_suggested_actions(message, {}),
+                model_provider="rule-based-faq",
+            )
+            cache.set(user_id, message, final_resp, request.current_competency_code)
+            yield f"data: {json.dumps({'type': 'delta', 'delta': answer})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'response': final_resp.model_dump()})}\n\n"
+            return
+
+        if is_assigned_quiz or is_rec_quiz or is_score or is_dash or is_gap or is_rec:
             yield f"data: {json.dumps({'type': 'status', 'stage': 'checking_context', 'message': 'Checking your competency profile...'})}\n\n"
             context_data = build_user_capability_context(
                 self.db,
                 user_id,
                 request.current_competency_code,
-                include_recommendations=is_rec,
+                include_recommendations=(is_rec or is_dash),
                 use_cache=True,
             )
 
-            if is_rec:
+            citations = []
+            if is_assigned_quiz:
+                answer = self._generate_deterministic_assigned_quizzes_response(message, context_data)
+            elif is_rec_quiz:
+                answer = self._generate_deterministic_recommended_quizzes_response(message, context_data)
+            elif is_score:
+                answer = self._generate_deterministic_competencies_response(message, context_data)
+            elif is_dash:
+                answer = self._generate_deterministic_dashboard_response(message, context_data)
+                citations = self._build_recommendation_citations(context_data)[:1] if context_data.get("recommendations") else []
+            elif is_rec:
                 answer = self._generate_deterministic_recommendations_response(message, context_data)
                 citations = self._build_recommendation_citations(context_data)
             else:
@@ -443,6 +604,7 @@ class AssistantService:
                 suggested_actions=actions,
                 model_provider="rule-based-fast",
             )
+            cache.set(user_id, message, final_resp, request.current_competency_code)
             yield f"data: {json.dumps({'type': 'done', 'response': final_resp.model_dump()})}\n\n"
             return
 
@@ -470,14 +632,14 @@ class AssistantService:
                         if getattr(self.settings, "rag_chat_vector_enabled", False)
                         else None
                     ),
-                    top_k_keyword=min(self.settings.rag_top_k_keyword, 10),
-                    top_k_vector=min(self.settings.rag_top_k_vector, 10),
+                    top_k_keyword=min(self.settings.rag_top_k_keyword, 3),
+                    top_k_vector=min(self.settings.rag_top_k_vector, 3),
                     competency_code=request.current_competency_code,
                 )
                 reranked_chunks = mmr_rerank(
                     candidates=raw_candidates,
                     query=message,
-                    top_k=min(self.settings.rag_rerank_top_k, 4),
+                    top_k=min(self.settings.rag_rerank_top_k, 3),
                     mmr_lambda=self.settings.rag_mmr_lambda,
                     embedding_provider=(
                         self._embedding_provider
@@ -580,9 +742,146 @@ class AssistantService:
             suggested_actions=self._generate_suggested_actions(message, context_data),
             model_provider=provider_name,
         )
+        cache.set(user_id, message, final_resp, request.current_competency_code)
         yield f"data: {json.dumps({'type': 'done', 'response': final_resp.model_dump()})}\n\n"
 
     # ── Deterministic Response Builders ───────────────────────────────────────
+
+    def _generate_deterministic_assigned_quizzes_response(
+        self,
+        message: str,
+        context_data: Dict[str, Any],
+    ) -> str:
+        profile = context_data.get("profile", {})
+        name = profile.get("full_name", "Officer")
+        role = profile.get("role_name", "Official")
+        assigned = context_data.get("assigned_quizzes", [])
+
+        if not assigned:
+            return (
+                f"Hello **{name}**. You currently have **no trainer-assigned quizzes** pending in your workspace.\n\n"
+                f"Your trainers have not assigned mandatory assessments yet. You can attempt system-recommended practice quizzes to build supporting evidence (0.30 confidence) for your active skill gaps."
+            )
+
+        items = []
+        for i, q in enumerate(assigned, 1):
+            title = q.get("title", "Assigned Quiz")
+            comp = q.get("competency_code", "COMPETENCY")
+            q_count = q.get("total_questions", 0)
+            expl = q.get("relevance_explanation", "Directly assigned by trainer.")
+            items.append(
+                f"{i}. **{title}**\n"
+                f"   - **Competency**: `{comp}` ({q_count} Questions)\n"
+                f"   - **Assignment Context**: {expl}"
+            )
+
+        quizzes_body = "\n\n".join(items)
+        return (
+            f"Hello **{name}**. Here are the official quizzes explicitly assigned to you by your trainer:\n\n"
+            f"{quizzes_body}\n\n"
+            f"> 💡 **Action**: Navigate to **Quizzes** to start your assigned assessments."
+        )
+
+    def _generate_deterministic_recommended_quizzes_response(
+        self,
+        message: str,
+        context_data: Dict[str, Any],
+    ) -> str:
+        profile = context_data.get("profile", {})
+        name = profile.get("full_name", "Officer")
+        role = profile.get("role_name", "Official")
+        recommended = context_data.get("recommended_quizzes", [])
+
+        if not recommended:
+            return (
+                f"Hello **{name}**. There are currently no new quiz recommendations for your role as **{role}**.\n\n"
+                f"All your assessed competencies are currently meeting required proficiency benchmarks."
+            )
+
+        items = []
+        for i, r in enumerate(recommended[:4], 1):
+            title = r.get("title", "Practice Quiz")
+            comp = r.get("competency_code", "COMPETENCY")
+            reason = r.get("reason", "Targeted for role proficiency requirement.")
+            items.append(
+                f"{i}. **{title}**\n"
+                f"   - **Target Competency**: `{comp}`\n"
+                f"   - **Recommendation Rationale**: {reason}"
+            )
+
+        rec_body = "\n\n".join(items)
+        return (
+            f"Hello **{name}**. Based on your role as **{role}** and active competency deficits, here are your recommended quizzes:\n\n"
+            f"{rec_body}\n\n"
+            f"> 💡 **Evidence Principle**: Completing practice quizzes generates **Supporting Evidence (0.30)** in your capability ledger."
+        )
+
+    def _generate_deterministic_competencies_response(
+        self,
+        message: str,
+        context_data: Dict[str, Any],
+    ) -> str:
+        profile = context_data.get("profile", {})
+        name = profile.get("full_name", "Officer")
+        role = profile.get("role_name", "Official")
+        top_gaps = context_data.get("top_gaps", [])
+
+        if not top_gaps:
+            return (
+                f"Hello **{name}**. In your role as **{role}**, all active competencies currently meet required benchmark proficiency."
+            )
+
+        comp_lines = [
+            f"- **{g.get('competency_name', g.get('competency_code'))}** (`{g.get('competency_code')}`): "
+            f"Current Level **{float(g.get('current_level', 0)):.1f}** / Target **{float(g.get('required_level', 4)):.1f}**"
+            for g in top_gaps[:5]
+        ]
+        return (
+            f"Hello **{name}**. Here is your current competency capability summary for **{role}**:\n\n"
+            + "\n".join(comp_lines) +
+            "\n\n> 🎯 To update your official competency ratings, complete an **Authoritative Capability Assessment**."
+        )
+
+    def _generate_deterministic_dashboard_response(
+        self,
+        message: str,
+        context_data: Dict[str, Any],
+    ) -> str:
+        profile = context_data.get("profile", {})
+        name = profile.get("full_name", "Officer")
+        role = profile.get("role_name", "Official")
+        dept = profile.get("department", "Government of India")
+        active = context_data.get("active_learning_count", 0)
+        completed = context_data.get("completed_learning_count", 0)
+        supporting = context_data.get("supporting_evidence_count", 0)
+        auth = context_data.get("authoritative_evidence_count", 0)
+        gap_count = context_data.get("total_gaps_count", len(context_data.get("top_gaps", [])))
+
+        if any(w in message.lower() for w in ("who am i", "about me", "my profile", "tell me about myself")):
+            return (
+                f"Hello **{name}**.\n\n"
+                f"- **Designation**: {profile.get('designation', role)}\n"
+                f"- **Department**: {dept}\n"
+                f"- **Role**: {role}\n\n"
+                f"You have **{gap_count} active competency gaps** and **{completed} completed learning modules**."
+            )
+
+        return (
+            f"### 📋 Dashboard Summary for {name} ({role} · {dept})\n\n"
+            f"- **Active Priority Skill Gaps**: {gap_count} competencies requiring development\n"
+            f"- **Learning Modules**: {completed} completed, {active} in progress\n"
+            f"- **Competency Evidence Records**: {supporting} Supporting (0.30) | {auth} Authoritative (0.85)\n\n"
+            f"> 💡 Use **Priority Skill Gaps** and **Next Best Action** on your dashboard to target your next learning steps."
+        )
+
+    def _generate_deterministic_platform_faq_response(self, message: str) -> str:
+        return (
+            "### 🏛️ About ShikshaSetu\n\n"
+            "**ShikshaSetu** is an AI-powered capability intelligence platform for Indian civil services officials.\n\n"
+            "- **Competency Intelligence**: Maps civil service roles to national competency frameworks (1–5 proficiency scale across Statistical, Technical, Behavioral, and Governance domains).\n"
+            "- **Targeted Learning**: Dynamically recommends verified iGOT Karmayogi courses and NSSTA training programmes tailored to your active skill gaps.\n"
+            "- **Two-Tier Evidence Ledger**: Distinguishes between **Supporting Evidence (0.30)** from course completions and **Authoritative Evidence (0.85)** from validated capability assessments."
+        )
 
     def _generate_deterministic_gaps_response(
         self,

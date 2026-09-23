@@ -10,7 +10,9 @@ import {
   Users,
   UserRound,
   Zap,
+  Compass,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/i18n";
 import { DashboardShell, DashboardNavItem } from "./DashboardShell";
 
@@ -21,6 +23,7 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children, activePage, onNavigate }: AdminLayoutProps) {
+  const { user } = useAuth();
   const { isHindi } = useTranslation();
 
   const navItems: DashboardNavItem[] = [
@@ -31,6 +34,7 @@ export function AdminLayout({ children, activePage, onNavigate }: AdminLayoutPro
     { id: "Training Effectiveness", label: isHindi ? "प्रशिक्षण प्रभावशीलता" : "Training Effectiveness", icon: TrendingUp },
     { id: "Emerging Skills", label: isHindi ? "उभरते कौशल" : "Emerging Skills", icon: Zap },
     { id: "Capacity Planning", label: isHindi ? "क्षमता योजना" : "Capacity Planning", icon: CalendarRange },
+    { id: "Opportunity Network", label: isHindi ? "अवसर नेटवर्क" : "Opportunity Network", icon: Compass },
     { id: "Users", label: isHindi ? "उपयोगकर्ता पंजी" : "Users", icon: Users },
     { id: "Reports", label: isHindi ? "प्रशासकीय रिपोर्ट" : "Reports", icon: FileBarChart },
     { id: "Profile", label: isHindi ? "प्रोफ़ाइल" : "Profile", icon: UserRound },
@@ -41,19 +45,21 @@ export function AdminLayout({ children, activePage, onNavigate }: AdminLayoutPro
       activePage={activePage}
       onNavigate={onNavigate}
       navItems={navItems}
-      workspaceTitle={isHindi ? "प्रशासक कार्यक्षेत्र" : "Admin workspace · Intelligence Console"}
-      headerWorkspaceLabel={isHindi ? "प्रशासक कार्यक्षेत्र" : "SHIKSHASETU WORKSPACE"}
+      workspaceTitle={isHindi ? "प्रशासक कार्यक्षेत्र" : "ADMIN WORKSPACE"}
+      headerWorkspaceLabel={isHindi ? "शिक्षासेतु कार्यक्षेत्र" : "SHIKSHASETU WORKSPACE"}
       logoHref="/admin"
-      roleBadgeText="System Admin"
-      bgClassName="bg-[#f3f1fb]"
+      roleBadgeText="Director (Capability & Human Resources)"
+      userDisplayName={user?.full_name || "System Administrator"}
+      userRoleSubtitle="Director (Capability & Human Resources)"
+      bgClassName="bg-[#f4f7fb]"
       roleTheme={{
-        activeNavBg: "bg-[#ede8f8]",
-        activeNavText: "text-[#5b3eb5]",
-        activeIndicator: "bg-[#5b3eb5]",
-        hoverNavBg: "hover:bg-purple-50 hover:text-[#4b36a8]",
-        avatarBg: "bg-purple-100 text-[#4b36a8]",
-        badgeDotBg: "bg-purple-500",
-        headerTitleColor: "text-[#4b36a8]",
+        activeNavBg: "bg-[#e8f5f3]",
+        activeNavText: "text-[#087f76]",
+        activeIndicator: "bg-[#087f76]",
+        hoverNavBg: "hover:bg-teal-50/50 hover:text-[#087f76]",
+        avatarBg: "bg-teal-100 text-[#087f76]",
+        badgeDotBg: "bg-emerald-500",
+        headerTitleColor: "text-[#123057]",
       }}
     >
       {children}

@@ -55,14 +55,20 @@ class Settings(BaseSettings):
 
     # RAG tuning — P0 upgrade
     embedding_api_key: str = Field(default="", validation_alias="EMBEDDING_API_KEY")
-    rag_top_k_keyword: int = Field(default=15, validation_alias="RAG_TOP_K_KEYWORD")
-    rag_top_k_vector: int = Field(default=15, validation_alias="RAG_TOP_K_VECTOR")
-    rag_chat_vector_enabled: bool = Field(default=False, validation_alias="RAG_CHAT_VECTOR_ENABLED")
-    rag_rerank_top_k: int = Field(default=6, validation_alias="RAG_RERANK_TOP_K")
+    rag_top_k_keyword: int = Field(default=8, validation_alias="RAG_TOP_K_KEYWORD")
+    rag_top_k_vector: int = Field(default=8, validation_alias="RAG_TOP_K_VECTOR")
+    rag_chat_vector_enabled: bool = Field(default=True, validation_alias="RAG_CHAT_VECTOR_ENABLED")
+    rag_rerank_top_k: int = Field(default=4, validation_alias="RAG_RERANK_TOP_K")
     rag_groundedness_threshold: float = Field(default=0.25, validation_alias="RAG_GROUNDEDNESS_THRESHOLD")
     rag_enable_query_rewrite: bool = Field(default=False, validation_alias="RAG_ENABLE_QUERY_REWRITE")
-    rag_mmr_lambda: float = Field(default=0.6, validation_alias="RAG_MMR_LAMBDA")
-    rag_mcq_top_k: int = Field(default=10, validation_alias="RAG_MCQ_TOP_K")
+    rag_mmr_lambda: float = Field(default=0.7, validation_alias="RAG_MMR_LAMBDA")
+    rag_mcq_top_k: int = Field(default=6, validation_alias="RAG_MCQ_TOP_K")
+    
+    # MongoDB Connection Pool Settings
+    mongodb_max_pool_size: int = Field(default=50, validation_alias="MONGODB_MAX_POOL_SIZE")
+    mongodb_min_pool_size: int = Field(default=10, validation_alias="MONGODB_MIN_POOL_SIZE")
+    mongodb_max_idle_time_ms: int = Field(default=30000, validation_alias="MONGODB_MAX_IDLE_TIME_MS")
+    mongodb_server_selection_timeout_ms: int = Field(default=3000, validation_alias="MONGODB_SERVER_SELECTION_TIMEOUT_MS")
     # Phase 3A: iGOT Karmayogi Ecosystem Integration
     igot_integration_mode: str = Field(default="prototype", validation_alias="IGOT_INTEGRATION_MODE")
     igot_api_base_url: str = Field(default="", validation_alias="IGOT_API_BASE_URL")

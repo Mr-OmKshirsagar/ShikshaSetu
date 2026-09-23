@@ -138,11 +138,44 @@ def build_user_capability_context(
     except Exception:
         pass
 
+    # 6. Quiz Feed (Explicitly Assigned by Trainer vs System-Recommended)
+    assigned_quizzes = []
+    recommended_quizzes = []
+    if hasattr(database, "quizzes"):
+        try:
+            from app.quizzes.service import QuizService
+            quiz_service = QuizService(database)
+            feed = quiz_service.get_official_quiz_feed(user_id, limit=5)
+            for q in feed.get("assigned", []):
+                assigned_quizzes.append({
+                    "quiz_id": str(q.get("_id", "")),
+                    "title": q.get("title", "Assigned Quiz"),
+                    "competency_code": q.get("competency_code"),
+                    "competency_name": q.get("competency_name"),
+                    "total_questions": len(q.get("questions", [])),
+                    "trainer_id": str(q.get("trainer_id", "")),
+                    "relevance_explanation": q.get("relevance_explanation", "Directly assigned by trainer."),
+                })
+            for r in feed.get("recommended", []):
+                rq = r.get("quiz", {})
+                recommended_quizzes.append({
+                    "quiz_id": str(rq.get("_id", "")),
+                    "title": rq.get("title", "Recommended Quiz"),
+                    "competency_code": rq.get("competency_code"),
+                    "competency_name": rq.get("competency_name"),
+                    "score": r.get("recommendation_score", 0.0),
+                    "reason": r.get("reason", "Recommended for active competency deficit."),
+                })
+        except Exception:
+            pass
+
     result = {
         "profile": profile_summary,
         "top_gaps": top_gaps,
         "total_gaps_count": len(gaps_list),
         "recommendations": recs_list,
+        "assigned_quizzes": assigned_quizzes,
+        "recommended_quizzes": recommended_quizzes,
         "active_learning_count": len(active_learning),
         "completed_learning_count": len(completed_learning),
         "supporting_evidence_count": supporting_count,

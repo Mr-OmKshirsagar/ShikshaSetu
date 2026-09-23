@@ -10,6 +10,7 @@ import {
   Target,
   TrendingUp,
   UserRound,
+  Sparkles,
 } from "lucide-react";
 import { useTranslation } from "@/i18n";
 import { CapabilityAssistant } from "@/components/assistant/CapabilityAssistant";
@@ -34,6 +35,7 @@ export function OfficialLayout({ children, activePage, onNavigate }: OfficialLay
     { id: "Quizzes",          label: t("nav.quizzes"),         icon: Award },
     { id: "Evidence",         label: t("nav.evidence"),        icon: FileText },
     { id: "Progress",         label: t("nav.progress"),        icon: TrendingUp },
+    { id: "Talent Passport",  label: t("nav.talentPassport"),  icon: Sparkles },
     { id: "Profile",          label: t("nav.profile"),         icon: UserRound },
   ];
 

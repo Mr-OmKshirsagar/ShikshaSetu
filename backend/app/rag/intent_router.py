@@ -65,6 +65,13 @@ class IntentResult:
     refuse: bool               # True → return polite refusal immediately
 
 
+# Standard refusal message required across ShikshaSetu
+STANDARD_OFF_TOPIC_REFUSAL: str = (
+    "I'm here to help with ShikshaSetu, government workforce "
+    "capabilities, competencies, skill gaps, assessments, "
+    "quizzes and learning recommendations."
+)
+
 # ── Keyword sets ──────────────────────────────────────────────────────────────
 
 # Questions clearly about the user's own data
@@ -75,13 +82,13 @@ _USER_DATA_SIGNALS: FrozenSet[str] = frozenset({
     "my role", "my training", "my history", "why was i recommended", "why am i",
     "my sql", "my python", "my sampling", "my rank", "my deficit", "my weakness",
     "am i on track", "how am i doing", "show my", "what is my",
+    "assigned to me", "assigned quizzes", "my assigned", "my tests",
+    "what quizzes are assigned", "quizzes assigned to me",
+    "who am i", "about me", "tell me about myself", "my identity",
 })
 
-# Questions clearly about curriculum or learning content
+# Domain-specific curriculum or capability content (requires concrete domain nouns, NOT bare verbs)
 _RAG_SIGNALS: FrozenSet[str] = frozenset({
-    "what is", "explain", "how does", "define", "describe", "overview",
-    "introduction to", "concept of", "difference between", "compare",
-    "what are the", "how to", "steps to", "methodology", "technique",
     "sampling technique", "sql joins", "python basics", "data analysis",
     "igot course", "nssta programme", "nssta training", "tpac",
     "karmayogi", "learning path", "curriculum", "syllabus",
@@ -94,9 +101,27 @@ _RAG_SIGNALS: FrozenSet[str] = frozenset({
     "level definition", "level 1", "level 2", "level 3", "level 4", "level 5",
     "evidence confidence", "supporting evidence", "authoritative evidence",
     "what does shikshasetu", "how does shikshasetu", "what is shikshasetu",
-    "how does the platform", "what is the purpose",
+    "how does the platform", "what is the purpose of shikshasetu",
     "give me an assessment", "ask me a question", "quiz me on",
     "explain this competency", "what is this course about",
+    "competency intelligence", "civic capability", "igot karmayogi",
+    "talathi", "statistical officer", "land records", "revenue department",
+    "mospi", "dopt", "nssta", "cbc", "capacity building commission",
+})
+
+# Positive domain signals that confirm a query is relevant to ShikshaSetu / Civil Services
+_POSITIVE_DOMAIN_SIGNALS: FrozenSet[str] = frozenset({
+    "shikshasetu", "karmayogi", "igot", "nssta", "tpac", "dashboard",
+    "competency", "competencies", "proficiency", "skill gap", "skill gaps",
+    "skill", "skills", "assessment", "assessments", "quiz", "quizzes",
+    "test", "tests", "evidence", "ledger", "recommendation", "recommendations",
+    "course", "courses", "training", "curriculum", "modules", "learning",
+    "civil service", "civil services", "government", "governance",
+    "designation", "department", "ministry", "mospi", "dopt", "revenue",
+    "talathi", "statistical officer", "sampling", "survey", "statistics",
+    "statistical", "deficit", "benchmark", "score", "scores",
+    "role", "roles", "target proficiency", "confidence level",
+    "authoritative", "supporting",
 })
 
 # Questions about live MoSPI statistics or official data
@@ -113,7 +138,6 @@ _MCP_SIGNALS: FrozenSet[str] = frozenset({
     "inflation data", "price data latest", "iip data",
     "today's iip", "today's cpi", "today's gdp", "today's plfs",
     "latest iip", "current iip", "iip figure",
-    "latest plfs", "current plfs", "plfs headline",
     "latest unemployment", "current unemployment rate",
     "latest gdp growth", "latest inflation",
 })
@@ -130,31 +154,26 @@ _HYBRID_SIGNALS: FrozenSet[str] = frozenset({
     "how to close my gap", "how to improve my competency",
     "what training for my gap",
     "why was the", "why was it recommended",
+    "which quiz should i take", "why was this quiz recommended",
 })
 
 # Patterns that are clearly unrelated to the ShikshaSetu domain
 _OUT_OF_SCOPE_SIGNALS: FrozenSet[str] = frozenset({
-    "write a poem", "write me a poem", "poem about",
-    "write a story", "write me a story", "tell me a story",
-    "joke", "tell me a joke", "make me laugh",
-    "recipe", "food recipe", "how to cook", "cooking", "biryani", "pasta", "curry",
-    "stock market", "share price", "cryptocurrency", "bitcoin",
+    "capital of", "france", "paris", "germany", "berlin", "cricket", "football",
+    "match score", "who won", "write me a python", "write a python", "write python code",
+    "write code", "generate code", "program in", "debug my code", "fix this bug",
+    "write a poem", "write me a poem", "poem about", "write a story", "tell me a story",
+    "tell me a joke", "make me laugh", "joke", "recipe", "food recipe", "how to cook",
+    "cooking", "biryani", "pasta", "curry", "pizza", "burger",
+    "stock market", "share price", "cryptocurrency", "bitcoin", "ethereum",
     "nse nifty", "bse sensex", "nifty", "sensex",
-    "sports", "cricket score", "football", "ipl", "match score",
-    "movie", "film", "netflix", "bollywood", "ott platform",
-    "weather", "weather forecast",
-    "news", "current news", "latest news", "breaking news",
-    "girlfriend", "boyfriend", "relationship advice",
-    "what is love", "love poem",
-    "translate", "translation",
-    "write code for", "debug my code", "fix this bug",
-    "javascript", "react app", "django project",
-    "ignore previous", "ignore all previous", "disregard", "forget instructions",
-    "reveal your prompt", "show your prompt", "what are your instructions",
-    "reveal your api", "reveal api key", "api key", "show api key",
-    "system prompt", "hidden instructions", "your training data",
-    "you are now", "act as", "pretend to be", "roleplay as",
-    "jailbreak", "dan mode",
+    "movie", "film", "netflix", "bollywood", "hollywood", "actor", "actress",
+    "weather", "weather forecast", "temperature today",
+    "relationship advice", "girlfriend", "boyfriend", "dating", "love poem",
+    "quantum physics", "astronomy", "black hole", "photosynthesis",
+    "write my resume", "build my resume", "cv builder",
+    "how do i hack", "hack a website", "penetration testing",
+    "translate this", "spanish", "french", "german", "russian",
     "another employee", "other employee", "someone else's",
     "show me other users", "access other accounts",
     "nssta seats available", "available seats", "seat availability",
@@ -290,7 +309,7 @@ class QueryIntentRouter:
             "show me my", "how many learning", "how many activities",
             "my current competency", "my latest", "my profile",
             "what competency level do i", "do i need for",
-            "what level do i need",
+            "what level do i need", "who am i", "about me", "tell me about myself",
         ))
         if self._matches_any(normalised, _STRONG_OWNERSHIP):
             return IntentResult(
@@ -346,15 +365,32 @@ class QueryIntentRouter:
                 use_glossary=has_gloss_signal, refuse=False,
             )
 
-        # ── 8. Mixed signals or ambiguous → HYBRID (conservative default) ─────
+        # ── 8. General ShikshaSetu / Government domain check ──────────────────
+        has_domain_signal = self._matches_any(normalised, _POSITIVE_DOMAIN_SIGNALS)
+        if has_domain_signal:
+            if has_user_signal:
+                return IntentResult(
+                    intent=QueryIntent.USER_DATA,
+                    confidence=0.80,
+                    reason="Domain signal + user context -> USER_DATA",
+                    use_rag=False, use_user_data=True, use_mcp=False,
+                    use_glossary=False, refuse=False,
+                )
+            return IntentResult(
+                intent=QueryIntent.RAG,
+                confidence=0.75,
+                reason="Civil services domain signal -> RAG knowledge",
+                use_rag=True, use_user_data=False, use_mcp=False,
+                use_glossary=has_gloss_signal, refuse=False,
+            )
+
+        # ── 9. Strict Scope Gate: No positive domain signal -> OUT_OF_SCOPE ──
         return IntentResult(
-            intent=QueryIntent.HYBRID,
-            confidence=0.60,
-            reason="Ambiguous or multi-signal — using HYBRID as conservative default",
-            use_rag=True, use_user_data=True,
-            use_mcp=has_mcp_signal,
-            use_glossary=has_gloss_signal,
-            refuse=False,
+            intent=QueryIntent.OUT_OF_SCOPE,
+            confidence=0.95,
+            reason="Query does not relate to ShikshaSetu, competencies, or government workforce",
+            use_rag=False, use_user_data=False, use_mcp=False,
+            use_glossary=False, refuse=True,
         )
 
     # ── Helpers ───────────────────────────────────────────────────────────────

@@ -11,6 +11,8 @@ import { AdminLayout } from "./layouts/AdminLayout";
 import { OfficialLayout } from "./layouts/OfficialLayout";
 import { PageSkeleton } from "./components/PageSkeleton";
 import { ShikshaSetuLogo } from "./components/brand/ShikshaSetuLogo";
+import { usePrefetchRoutes } from "@/utils/routePrefetch";
+import { registerServiceWorker } from "@/utils/serviceWorker";
 
 // ─── Lazy Loaded Pages ─────────────────────────────────────────────────────────
 
@@ -38,6 +40,9 @@ const TrainerLearnerResults = lazy(() =>
 );
 const TrainerProfile = lazy(() =>
   import("./pages/trainer/TrainerProfile").then((m) => ({ default: m.TrainerProfile }))
+);
+const TrainerTalentPassport = lazy(() =>
+  import("./pages/trainer/TrainerTalentPassport").then((m) => ({ default: m.TrainerTalentPassport }))
 );
 
 // Admin Pages
@@ -71,6 +76,9 @@ const AdminReports = lazy(() =>
 const AdminProfile = lazy(() =>
   import("./pages/admin/AdminProfile").then((m) => ({ default: m.AdminProfile }))
 );
+const AdminTalentNetwork = lazy(() =>
+  import("./pages/admin/AdminTalentNetwork").then((m) => ({ default: m.AdminTalentNetwork }))
+);
 
 // Official Pages
 const OfficialDashboard = lazy(() =>
@@ -102,6 +110,9 @@ const OfficialProgress = lazy(() =>
 );
 const OfficialProfile = lazy(() =>
   import("./pages/official/OfficialProfile").then((m) => ({ default: m.OfficialProfile }))
+);
+const OfficialTalentPassport = lazy(() =>
+  import("./pages/official/OfficialTalentPassport").then((m) => ({ default: m.OfficialTalentPassport }))
 );
 // ─── Loading screen ───────────────────────────────────────────────────────────
 
@@ -147,6 +158,8 @@ const TRAINER_SLUG_MAP: Record<string, string> = {
   "quiz-studio": "Quiz Studio",
   "published-quizzes": "Quiz Studio",
   "learner-results": "Learner Results",
+  "trainer-talent-passport": "Trainer Talent Passport",
+  "talent-passport": "Trainer Talent Passport",
   "profile": "Profile",
 };
 
@@ -157,6 +170,13 @@ function TrainerApp() {
   const match = location.match(/^\/trainer\/?([^\/?#]+)?/i);
   const rawSlug = match && match[1] ? match[1].toLowerCase() : "";
   const activePage = TRAINER_SLUG_MAP[rawSlug] || "Dashboard";
+
+  // Prefetch commonly accessed trainer pages
+  usePrefetchRoutes([
+    { loader: () => import("./pages/trainer/TrainerMaterials"), key: "trainer-materials" },
+    { loader: () => import("./pages/trainer/TrainerQuizStudio"), key: "trainer-quiz-studio" },
+    { loader: () => import("./pages/trainer/TrainerQuestionGenerator"), key: "trainer-question-gen" },
+  ]);
 
   useEffect(() => {
     if (!rawSlug || !TRAINER_SLUG_MAP[rawSlug]) {
@@ -205,6 +225,8 @@ function TrainerApp() {
             onNavigate={handleNavigate}
           />
         );
+      case "Trainer Talent Passport":
+        return <TrainerTalentPassport />;
       case "Profile":
         return <TrainerProfile />;
       default:
@@ -231,6 +253,8 @@ const ADMIN_SLUG_MAP: Record<string, string> = {
   "training-effectiveness": "Training Effectiveness",
   "emerging-skills": "Emerging Skills",
   "capacity-planning": "Capacity Planning",
+  "opportunity-network": "Opportunity Network",
+  "talent-network": "Opportunity Network",
   "users": "Users",
   "reports": "Reports",
   "profile": "Profile",
@@ -242,6 +266,13 @@ function AdminApp() {
   const match = location.match(/^\/admin\/?([^\/?#]+)?/i);
   const rawSlug = match && match[1] ? match[1].toLowerCase() : "";
   const activePage = ADMIN_SLUG_MAP[rawSlug] || "Dashboard";
+
+  // Prefetch commonly accessed admin pages
+  usePrefetchRoutes([
+    { loader: () => import("./pages/admin/WorkforceOverview"), key: "admin-workforce" },
+    { loader: () => import("./pages/admin/CompetencyAnalytics"), key: "admin-competency" },
+    { loader: () => import("./pages/admin/SkillGapAnalytics"), key: "admin-skill-gaps" },
+  ]);
 
   useEffect(() => {
     if (!rawSlug || !ADMIN_SLUG_MAP[rawSlug]) {
@@ -272,6 +303,8 @@ function AdminApp() {
         return <EmergingSkills onNavigate={handleNavigate} />;
       case "Capacity Planning":
         return <CapacityPlanning onNavigate={handleNavigate} />;
+      case "Opportunity Network":
+        return <AdminTalentNetwork />;
       case "Users":
         return <AdminUsers onNavigate={handleNavigate} />;
       case "Reports":
@@ -304,6 +337,7 @@ const OFFICIAL_SLUG_MAP: Record<string, string> = {
   "quizzes": "Quizzes",
   "evidence": "Evidence",
   "progress": "Progress",
+  "talent-passport": "Talent Passport",
   "profile": "Profile",
 };
 
@@ -314,6 +348,14 @@ function OfficialApp() {
   const match = location.match(/^\/(?:official|employee)\/?([^\/?#]+)?/i);
   const rawSlug = match && match[1] ? match[1].toLowerCase() : "";
   const activePage = OFFICIAL_SLUG_MAP[rawSlug] || "Dashboard";
+
+  // Prefetch commonly accessed official pages
+  usePrefetchRoutes([
+    { loader: () => import("./pages/official/OfficialCompetencies"), key: "official-competencies" },
+    { loader: () => import("./pages/official/OfficialAssessments"), key: "official-assessments" },
+    { loader: () => import("./pages/official/OfficialSkillGaps"), key: "official-skill-gaps" },
+    { loader: () => import("./pages/official/OfficialLearning"), key: "official-learning" },
+  ]);
 
   useEffect(() => {
     if (!rawSlug || !OFFICIAL_SLUG_MAP[rawSlug]) {
@@ -371,6 +413,8 @@ function OfficialApp() {
         return <OfficialEvidence onNavigate={handleNavigate} />;
       case "Progress":
         return <OfficialProgress onNavigate={handleNavigate} />;
+      case "Talent Passport":
+        return <OfficialTalentPassport onNavigate={handleNavigate} />;
       case "Profile":
         return <OfficialProfile />;
       default:
@@ -445,6 +489,15 @@ function RoleRouter() {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 function App() {
+  // Register service worker for offline support and caching
+  useEffect(() => {
+    registerServiceWorker({
+      onSuccess: () => console.log("[App] Service worker registered successfully"),
+      onUpdate: () => console.log("[App] New app version available"),
+      onError: (error) => console.error("[App] Service worker error:", error),
+    });
+  }, []);
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">

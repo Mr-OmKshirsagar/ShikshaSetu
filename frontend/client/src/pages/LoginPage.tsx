@@ -7,6 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { Role } from "@/lib/api";
 import { DEPARTMENT_TAXONOMY } from "@/lib/departments";
 import { ShikshaSetuLogo } from "@/components/brand/ShikshaSetuLogo";
+import {
+  GovernmentLevel,
+  GovernmentOrganization,
+  CENTRAL_MINISTRIES,
+} from "@/lib/governmentTaxonomy";
+import { GovernmentTaxonomySelector } from "@/components/common/GovernmentTaxonomySelector";
 
 export default function LoginPage() {
   const { login } = useAuth();

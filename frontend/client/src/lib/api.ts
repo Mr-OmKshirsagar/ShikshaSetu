@@ -1551,5 +1551,218 @@ export const api = {
         status: string;
       }[]>("/adaptive-assessments/history", {}, { skipCache: true }),
   },
+
+  // ─── Government Talent & Opportunity Network namespace ──────────────────────
+  talent: {
+    getProfile: () =>
+      request<TalentProfile>("/talent/profile", {}, { skipCache: true }),
+    updatePreferences: (data: Partial<TalentPreferences>) =>
+      request<TalentPreferences>("/talent/profile/preferences", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    getOpportunities: () =>
+      request<UserOpportunityListResponse>("/talent/opportunities", {}, { skipCache: true }),
+    getManagedOpportunities: (params?: { status?: string; department?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.status) q.append("status", params.status);
+      if (params?.department) q.append("department", params.department);
+      const queryStr = q.toString() ? `?${q.toString()}` : "";
+      return request<OpportunityListResponse>(`/talent/opportunities/manage${queryStr}`, {}, { skipCache: true });
+    },
+    getOpportunity: (opportunityId: string) =>
+      request<GovernmentOpportunity>(`/talent/opportunities/${opportunityId}`),
+    getMatchExplanation: (opportunityId: string) =>
+      request<MatchExplanation>(`/talent/opportunities/${opportunityId}/match`, {}, { skipCache: true }),
+    getOpportunityMatches: (opportunityId: string) =>
+      request<OpportunityMatchResponse>(`/talent/opportunities/${opportunityId}/matches`, {}, { skipCache: true }),
+    createOpportunity: (data: Partial<GovernmentOpportunity>) =>
+      request<GovernmentOpportunity>("/talent/opportunities", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    updateOpportunity: (opportunityId: string, data: Partial<GovernmentOpportunity>) =>
+      request<GovernmentOpportunity>(`/talent/opportunities/${opportunityId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    publishOpportunity: (opportunityId: string) =>
+      request<GovernmentOpportunity>(`/talent/opportunities/${opportunityId}/publish`, {
+        method: "POST",
+      }),
+    deleteOpportunity: (opportunityId: string) =>
+      request<void>(`/talent/opportunities/${opportunityId}`, {
+        method: "DELETE",
+      }),
+    getAuditLogs: (params?: { target_user_id?: string; target_opportunity_id?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.target_user_id) q.append("target_user_id", params.target_user_id);
+      if (params?.target_opportunity_id) q.append("target_opportunity_id", params.target_opportunity_id);
+      const queryStr = q.toString() ? `?${q.toString()}` : "";
+      return request<AuditLogListResponse>(`/talent/audit${queryStr}`, {}, { skipCache: true });
+    },
+  },
 };
+
+// ─── Talent Network Types ───────────────────────────────────────────────────
+
+export type OpportunityType =
+  | "TRAINER"
+  | "MENTOR"
+  | "KNOWLEDGE_SHARING"
+  | "SUBJECT_MATTER_EXPERT"
+  | "CAPACITY_BUILDING"
+  | "WORKSHOP"
+  | "ADVISORY"
+  | "OTHER_APPROVED";
+
+export type OpportunityStatus = "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
+
+export type VisibilityLevel = "PRIVATE" | "MY_DEPARTMENT" | "AUTHORIZED_DEPARTMENTS";
+
+export interface TalentPreferences {
+  user_id: string;
+  opt_in_enabled: boolean;
+  visibility_level: VisibilityLevel;
+  opportunity_types: OpportunityType[];
+  available_for_opportunities: boolean;
+  updated_at?: string;
+}
+
+export interface VerifiedCompetency {
+  competency_id: string;
+  competency_code: string;
+  competency_name: string;
+  domain?: string | null;
+  current_level: number;
+  required_level?: number | null;
+  confidence: number;
+  evidence_count: number;
+  verification_status: string;
+}
+
+export interface TalentProfile {
+  user_id: string;
+  full_name: string;
+  designation: string;
+  department: string;
+  employee_id: string;
+  role_id?: string | null;
+  role_name?: string | null;
+  organization_id?: string | null;
+  organization_type?: string | null;
+  government_level?: string | null;
+  state_ut?: string | null;
+  verified_competencies: VerifiedCompetency[];
+  total_competencies: number;
+  average_confidence: number;
+  years_experience?: number | null;
+  trainer_experience: boolean;
+  training_materials_count: number;
+  quizzes_authored_count: number;
+  learners_trained_count: number;
+  completed_learning_count: number;
+  knowledge_domains: string[];
+  profile_readiness: number;
+  preferences?: TalentPreferences | null;
+}
+
+export interface MatchedCompetency {
+  competency_code: string;
+  competency_name: string;
+  required_level: number;
+  current_level: number;
+  gap: number;
+  meets_requirement: boolean;
+}
+
+export interface MatchExplanation {
+  eligible: boolean;
+  match_score: number;
+  matched_competencies: MatchedCompetency[];
+  missing_competencies: string[];
+  eligibility_reasons: string[];
+  match_reasons: string[];
+  evidence_confidence: number;
+}
+
+export interface GovernmentOpportunity {
+  id: string;
+  title: string;
+  description: string;
+  department_name: string;
+  ministry_name?: string | null;
+  opportunity_type: OpportunityType;
+  location?: string | null;
+  is_remote: boolean;
+  required_roles: string[];
+  required_designations: string[];
+  required_competencies: {
+    competency_code: string;
+    minimum_level: number;
+    importance: number;
+  }[];
+  minimum_experience_years?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  application_deadline?: string | null;
+  status: OpportunityStatus;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  published_at?: string | null;
+}
+
+export interface UserOpportunity {
+  opportunity: GovernmentOpportunity;
+  match_explanation?: MatchExplanation | null;
+  is_eligible: boolean;
+}
+
+export interface TalentMatch {
+  user_id: string;
+  full_name: string;
+  designation: string;
+  department: string;
+  match_score: number;
+  competency_match_count: number;
+  evidence_confidence: number;
+  eligible: boolean;
+  profile_readiness?: number;
+  explanation: MatchExplanation;
+}
+
+export interface OpportunityMatchResponse {
+  opportunity_id: string;
+  opportunity_title: string;
+  total_eligible: number;
+  matches: TalentMatch[];
+}
+
+export interface OpportunityListResponse {
+  total: number;
+  opportunities: GovernmentOpportunity[];
+}
+
+export interface UserOpportunityListResponse {
+  total: number;
+  opportunities: UserOpportunity[];
+}
+
+export interface TalentAuditLog {
+  action: string;
+  performed_by: string;
+  performed_by_name: string;
+  performed_by_department: string;
+  target_user_id?: string | null;
+  target_opportunity_id?: string | null;
+  details: Record<string, any>;
+  timestamp: string;
+}
+
+export interface AuditLogListResponse {
+  total: number;
+  logs: TalentAuditLog[];
+}
+
 

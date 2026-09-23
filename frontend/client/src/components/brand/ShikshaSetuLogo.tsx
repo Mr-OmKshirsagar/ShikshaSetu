@@ -115,7 +115,7 @@ export const ShikshaSetuLogo: React.FC<ShikshaSetuLogoProps> = ({
     content = (
       <div className={`inline-flex items-center justify-center ${className}`}>
         <img
-          src="/assets/shikshasetu-logo.png"
+          src="/assets/shikshasetu-logo-official.png"
           alt={alt}
           loading={loadingAttr}
           className={`max-w-full select-none object-contain ${sizeCls} ${imgClassName}`}

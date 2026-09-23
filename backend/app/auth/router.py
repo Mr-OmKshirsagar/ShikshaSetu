@@ -25,10 +25,8 @@ def public_user(document: dict) -> dict:
 
 
 def database_or_error(request: Request):
-    database = getattr(request.app.state, "database", None)
-    if database is None:
-        raise HTTPException(status_code=503, detail="Database is unavailable")
-    return database
+    from app.core.database import get_or_reconnect_database
+    return get_or_reconnect_database(request.app)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -100,7 +98,7 @@ def register(request: Request, payload: RegisterRequest) -> dict:
 
 
 @router.post("/login", response_model=TokenResponse)
-@limiter.limit("10/minute")
+@limiter.limit("60/minute")
 def login(request: Request, payload: LoginRequest) -> dict:
     database = database_or_error(request)
     user = repository.get_user_by_email(database, str(payload.email))

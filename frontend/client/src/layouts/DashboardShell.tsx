@@ -35,6 +35,8 @@ export interface DashboardShellProps {
   headerActions?: React.ReactNode;
   logoHref?: string;
   roleBadgeText?: string;
+  userDisplayName?: string;
+  userRoleSubtitle?: string;
   roleTheme?: DashboardRoleTheme;
   bgClassName?: string;
 }
@@ -50,6 +52,8 @@ export function DashboardShell({
   headerActions,
   logoHref = "/",
   roleBadgeText,
+  userDisplayName,
+  userRoleSubtitle,
   roleTheme,
   bgClassName = "bg-[#f4f7fb]",
 }: DashboardShellProps) {
@@ -67,9 +71,9 @@ export function DashboardShell({
 
   return (
     <div className={`min-h-screen ${bgClassName} text-[#1a2744]`}>
-      {/* ── 1. Left Sidebar (Fixed 264px width, full viewport height) ── */}
+      {/* ── 1. Left Sidebar (Fixed 220px width, full viewport height) ── */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[264px] min-w-[264px] max-w-[264px] h-screen bg-white border-r border-[#dfe7f0] flex flex-col transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-[220px] min-w-[220px] max-w-[220px] h-screen bg-white border-r border-[#dfe7f0] flex flex-col transition-transform duration-200 lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
@@ -88,7 +92,7 @@ export function DashboardShell({
         </div>
 
         {/* Workspace Category Label */}
-        <div className="px-6 pt-4 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 truncate">
+        <div className="px-5 pt-3 pb-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400 truncate">
           {workspaceTitle}
         </div>
 
@@ -100,7 +104,7 @@ export function DashboardShell({
               <button
                 key={id}
                 onClick={() => handleNavClick(id)}
-                className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs sm:text-[13px] transition-all duration-150 active:scale-[0.98] group ${
+                className={`relative flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[11px] transition-all duration-150 active:scale-[0.98] group ${
                   isActive
                     ? `${roleTheme?.activeNavBg || "bg-[#e8f5f3]"} ${
                         roleTheme?.activeNavText || "text-[#087f76]"
@@ -119,7 +123,7 @@ export function DashboardShell({
                   />
                 )}
                 <Icon
-                  size={17}
+                  size={15}
                   className={`shrink-0 transition-transform duration-150 ${
                     isActive
                       ? `scale-105 ${roleTheme?.activeNavText || "text-[#087f76]"}`
@@ -137,35 +141,25 @@ export function DashboardShell({
           })}
         </nav>
 
-        {/* Bottom Profile Card & Logout Section (Strictly bottom-left, never header) */}
+        {/* Bottom Profile Card */}
         <div className="border-t border-[#dfe7f0] p-3.5 bg-slate-50/70 shrink-0">
-          <div className="flex items-center gap-2.5 px-2.5 py-2 mb-2 rounded-xl bg-white border border-[#dfe7f0] shadow-2xs">
+          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-white border border-[#dfe7f0] shadow-2xs">
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-lg font-bold text-xs shrink-0 ${
                 roleTheme?.avatarBg || "bg-teal-100 text-[#087f76]"
               }`}
             >
-              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U"}
+              {(userDisplayName || user?.full_name || "System Administrator").charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-[#123057] truncate">
-                {user?.full_name || "Official"}
+              <div className="text-[11px] font-bold text-[#123057] truncate">
+                {userDisplayName || user?.full_name || "System Administrator"}
               </div>
-              <div className="text-[10px] font-medium text-slate-500 truncate">
-                {user?.designation || user?.department || roleBadgeText || "User"}
+              <div className="text-[9px] font-medium text-slate-500 truncate">
+                {userRoleSubtitle || user?.designation || user?.department || roleBadgeText || "User"}
               </div>
             </div>
           </div>
-
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-red-700 hover:bg-red-50/80 transition-all duration-150 group focus:outline-hidden cursor-pointer"
-            title={t("common.logout")}
-            aria-label={t("common.logout")}
-          >
-            <LogOut size={15} className="text-slate-400 group-hover:text-red-600 transition-colors shrink-0" />
-            <span>{t("common.logout")}</span>
-          </button>
         </div>
       </aside>
 
@@ -178,8 +172,8 @@ export function DashboardShell({
         />
       )}
 
-      {/* ── 3. Main Workspace Layout (Offset by sidebar width: lg:pl-[264px]) ── */}
-      <div className="lg:pl-[264px] min-h-screen flex flex-col">
+      {/* ── 3. Main Workspace Layout (Offset by sidebar width: lg:pl-[220px]) ── */}
+      <div className="lg:pl-[220px] min-h-screen flex flex-col">
         {/* Top Header (72px fixed height, matching sidebar brand bar height) */}
         <header className="sticky top-0 z-20 h-[72px] min-h-[72px] max-h-[72px] w-full bg-white/95 backdrop-blur-md border-b border-[#dfe7f0]">
           <div className="h-full w-full max-w-[1360px] mx-auto px-6 lg:px-9 flex items-center justify-between">
@@ -208,18 +202,27 @@ export function DashboardShell({
               </div>
             </div>
 
-            {/* Right: AI Assistant, Language Toggle, User profile badge (NO logout button here) */}
+            {/* Right: AI Assistant, Language Toggle, User Badge, Logout Button */}
             <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
               {headerActions}
               <LanguageToggle />
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-[#dfe7f0] text-xs font-semibold text-[#123057] shadow-2xs">
-                <span
-                  className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                    roleTheme?.badgeDotBg || "bg-emerald-500"
-                  }`}
-                />
-                <span className="truncate max-w-[160px]">{user?.full_name || "User"}</span>
+              
+              {/* User badge matching ShikshaSetu official header */}
+              <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-xs font-semibold text-[#123057] border border-slate-200">
+                <span className={`h-2 w-2 rounded-full ${roleTheme?.badgeDotBg || "bg-emerald-500"}`} />
+                <span className="truncate max-w-[150px]">{userDisplayName || user?.full_name || "System Administrator"}</span>
               </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={logout}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-red-700 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition-all duration-150 shadow-2xs"
+                title={t("common.logout")}
+                aria-label={t("common.logout")}
+              >
+                <LogOut size={14} className="shrink-0" />
+                <span className="hidden sm:inline">{t("common.logout")}</span>
+              </button>
             </div>
           </div>
         </header>

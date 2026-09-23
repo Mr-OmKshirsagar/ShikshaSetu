@@ -25,6 +25,7 @@ from app.users.router import router as users_router
 from app.igot.router import router as igot_router
 from app.assistant.router import router as assistant_router
 from app.adaptive_assessments.router import router as adaptive_assessments_router
+from app.talent.router import router as talent_router
 from slowapi.errors import RateLimitExceeded
 from app.core.limiter import limiter
 
@@ -49,6 +50,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.database_client = client
             app.state.database = database
             logger.info("MongoDB client initialized")
+
+            try:
+                from app.talent.repository import ensure_talent_indexes
+                ensure_talent_indexes(database)
+            except Exception:
+                logger.exception("Talent index creation failed (non-fatal)")
 
             # Build in-memory embedding indexes — LAZY background task,
             # does NOT block application ready state.
@@ -129,6 +136,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(igot_router, prefix=app_settings.api_prefix)
     application.include_router(assistant_router, prefix=app_settings.api_prefix)
     application.include_router(adaptive_assessments_router, prefix=app_settings.api_prefix)
+    application.include_router(talent_router, prefix=app_settings.api_prefix)
 
     @application.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:

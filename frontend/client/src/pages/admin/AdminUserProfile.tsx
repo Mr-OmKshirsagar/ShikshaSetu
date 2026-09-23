@@ -78,7 +78,7 @@ function PanelShell({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-black/10"
         onClick={onClose}
         aria-hidden="true"
       />
