@@ -29,7 +29,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/i18n";
 import { toast } from "sonner";
-import { AnimatedSection, ProgressBarFill } from "@/components/motion/MotionUtils";
+import { AnimatedSection, ProgressBarFill, NumberReveal } from "@/components/motion/MotionUtils";
 
 interface OfficialTalentPassportProps {
   onNavigate?: (page: string) => void;
@@ -172,19 +172,23 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
               {loading && !profile ? (
                 <span className="inline-block h-4 w-10 bg-white/20 rounded animate-pulse" />
               ) : (
-                <span className="font-bold text-[#38d9c0] text-sm">{readinessPct}%</span>
+                <span className="font-bold text-[#38d9c0] text-sm">
+                  <NumberReveal value={readinessPct} suffix="%" />
+                </span>
               )}
             </div>
-            <div className="mt-2 h-2 w-full rounded-full bg-black/20 overflow-hidden">
-              {loading && !profile ? (
+            {loading && !profile ? (
+              <div className="mt-2 h-2 w-full rounded-full bg-black/20 overflow-hidden">
                 <div className="h-full w-2/3 rounded-full bg-white/30 animate-pulse" />
-              ) : (
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#38d9c0] to-[#2dd4bf] transition-all duration-700"
-                  style={{ width: `${readinessPct}%` }}
-                />
-              )}
-            </div>
+              </div>
+            ) : (
+              <ProgressBarFill
+                percent={readinessPct}
+                className="mt-2 h-2 w-full rounded-full bg-black/20 overflow-hidden"
+                fillClassName="h-full rounded-full bg-gradient-to-r from-[#38d9c0] to-[#2dd4bf]"
+                durationMs={800}
+              />
+            )}
             <div className="mt-2 flex items-center justify-between text-[11px] text-slate-300">
               {loading && !profile ? (
                 <>
@@ -193,8 +197,12 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
                 </>
               ) : (
                 <>
-                  <span>{profile?.verified_competencies?.length || 0} Competencies</span>
-                  <span>{Math.round((profile?.average_confidence || 0) * 100)}% Confidence</span>
+                  <span>
+                    <NumberReveal value={profile?.verified_competencies?.length || 0} /> Competencies
+                  </span>
+                  <span>
+                    <NumberReveal value={Math.round((profile?.average_confidence || 0) * 100)} suffix="%" /> Confidence
+                  </span>
                 </>
               )}
             </div>
@@ -381,7 +389,7 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
             </p>
           </div>
           <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-[#087f76]">
-            {opportunities.length} Matched
+            <NumberReveal value={opportunities.length} /> Matched
           </span>
         </div>
 
@@ -438,7 +446,7 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
                       {item.is_eligible && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
                           <CheckCircle2 size={12} />
-                          {scorePct}% Match
+                          <NumberReveal value={scorePct} suffix="%" /> Match
                         </span>
                       )}
                     </div>
@@ -464,7 +472,7 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
 
                   <div className="mt-5 pt-4 border-t border-slate-200/80 flex items-center justify-between">
                     <span className="text-[11px] text-slate-500 font-medium">
-                      {opp.required_competencies.length} Competencies Required
+                      <NumberReveal value={opp.required_competencies.length} /> Competencies Required
                     </span>
                     {exp && (
                       <button
@@ -544,13 +552,21 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
                   <h3 className="mt-1 text-sm font-bold text-[#123057]">{comp.competency_name}</h3>
                   <div className="mt-3 flex items-baseline justify-between">
                     <span className="text-2xl font-bold text-[#123057]">
-                      {comp.current_level.toFixed(1)}{" "}
+                      <NumberReveal value={comp.current_level} decimals={1} />{" "}
                       <span className="text-xs font-normal text-slate-400">/ 5.0</span>
                     </span>
-                    <span className="text-xs text-slate-500">{confPct}% confidence</span>
+                    <span className="text-xs text-slate-500">
+                      <NumberReveal value={confPct} suffix="%" /> confidence
+                    </span>
                   </div>
+                  <ProgressBarFill
+                    percent={(comp.current_level / 5.0) * 100}
+                    className="mt-2 h-1.5 w-full rounded-full bg-slate-200 overflow-hidden"
+                    fillClassName="h-full rounded-full bg-[#087f76]"
+                    durationMs={800}
+                  />
                   <div className="mt-2 text-[11px] text-slate-400">
-                    {comp.evidence_count} evidence records on ledger
+                    <NumberReveal value={comp.evidence_count} /> evidence records on ledger
                   </div>
                 </div>
               );
@@ -574,7 +590,7 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
               {loading && !profile ? (
                 <div className="h-7 w-16 mx-auto rounded bg-slate-200/80 animate-pulse mt-1" />
               ) : (
-                `${profile?.years_experience || 5} Years`
+                <NumberReveal value={profile?.years_experience || 5} suffix=" Years" />
               )}
             </div>
             <span className="text-[11px] text-slate-500">Government service</span>
@@ -586,7 +602,7 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
               {loading && !profile ? (
                 <div className="h-7 w-12 mx-auto rounded bg-slate-200/80 animate-pulse mt-1" />
               ) : (
-                profile?.completed_learning_count || 0
+                <NumberReveal value={profile?.completed_learning_count || 0} />
               )}
             </div>
             <span className="text-[11px] text-slate-500">iGOT / NSSTA activities</span>
@@ -598,7 +614,7 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
               {loading && !profile ? (
                 <div className="h-7 w-12 mx-auto rounded bg-slate-200/80 animate-pulse mt-1" />
               ) : (
-                profile?.training_materials_count || 0
+                <NumberReveal value={profile?.training_materials_count || 0} />
               )}
             </div>
             <span className="text-[11px] text-slate-500">Authored or reviewed</span>
@@ -610,7 +626,7 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
               {loading && !profile ? (
                 <div className="h-7 w-12 mx-auto rounded bg-slate-200/80 animate-pulse mt-1" />
               ) : (
-                profile?.learners_trained_count || 0
+                <NumberReveal value={profile?.learners_trained_count || 0} />
               )}
             </div>
             <span className="text-[11px] text-slate-500">Through training quizzes</span>

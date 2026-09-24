@@ -212,7 +212,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
               <div className="h-7 w-16 rounded bg-slate-200/80 animate-pulse mt-2" />
             ) : (
               <div className="mt-2 text-2xl font-bold tracking-tight text-teal-700">
-                <NumberReveal value={assessedCount} /> / {gaps.length}
+                <NumberReveal value={assessedCount} /> / <NumberReveal value={gaps.length} />
               </div>
             )}
           </div>
@@ -225,7 +225,7 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
               <div className="h-7 w-16 rounded bg-slate-200/80 animate-pulse mt-2" />
             ) : (
               <div className="mt-2 text-2xl font-bold tracking-tight text-[#123057]">
-                {gaps.length} {t("skillGaps.active")}
+                <NumberReveal value={gaps.length} /> {t("skillGaps.active")}
               </div>
             )}
           </div>
