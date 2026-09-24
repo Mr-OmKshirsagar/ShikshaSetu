@@ -443,18 +443,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
     difficulty === "MEDIUM" ? "bg-blue-100 text-blue-800 border-blue-200"       :
                               "bg-emerald-100 text-emerald-900 border-emerald-200";
 
-  // ============================================================
-  // RENDER — LOADING COMPETENCIES
-  // ============================================================
 
-  if (phase === "LOADING_COMPETENCIES") {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 size={32} className="animate-spin text-[#087f76]" />
-        <p className="text-sm font-semibold text-slate-500">Loading your capability profile…</p>
-      </div>
-    );
-  }
 
   // ============================================================
   // RENDER — STARTING / RESUMING
@@ -895,7 +884,7 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
         )}
 
         {/* Hero CTA */}
-        {competencies.length > 0 && (
+        {(competencies.length > 0 || phase === "LOADING_COMPETENCIES") && (
           <div className="mt-6 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50/90 via-blue-50/60 to-purple-50/50 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-5 shadow-sm">
             <div className="space-y-2">
               <div className="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-3 py-0.5 text-[10px] font-extrabold text-teal-900 uppercase tracking-wider">
@@ -908,18 +897,51 @@ export function OfficialAssessments({ initialCompetencyCode, onNavigate }: Offic
                 updating your official competency rating.
               </p>
             </div>
-            <button
-              onClick={() => startAssessment(competencies[0].code)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ef7e37] px-6 py-3.5 text-xs font-black text-white shadow-md hover:bg-[#d96a27] transition-all whitespace-nowrap"
-            >
-              <Zap size={14} /> Start {competencies[0]?.name?.split(" ")[0] ?? "Target"} Assessment
-            </button>
+            {phase === "LOADING_COMPETENCIES" ? (
+              <div className="h-11 w-44 rounded-xl bg-slate-200/80 animate-pulse shrink-0" />
+            ) : (
+              <button
+                onClick={() => startAssessment(competencies[0].code)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ef7e37] px-6 py-3.5 text-xs font-black text-white shadow-md hover:bg-[#d96a27] transition-all whitespace-nowrap"
+              >
+                <Zap size={14} /> Start {competencies[0]?.name?.split(" ")[0] ?? "Target"} Assessment
+              </button>
+            )}
           </div>
         )}
       </div>
 
       {/* Competency cards */}
-      {competencies.length > 0 ? (
+      {phase === "LOADING_COMPETENCIES" ? (
+        <div>
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+            Your Mapped Competencies — Select for Adaptive Evaluation
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col justify-between space-y-4 shadow-sm"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="h-5 w-20 rounded bg-slate-200 animate-pulse" />
+                    <div className="h-4 w-16 rounded bg-slate-100 animate-pulse" />
+                  </div>
+                  <div className="h-5 w-48 rounded bg-slate-200 animate-pulse" />
+                  <div className="h-3.5 w-full rounded bg-slate-100 animate-pulse" />
+                  <div className="grid grid-cols-3 gap-2 pt-2">
+                    <div className="h-8 rounded bg-slate-100 animate-pulse" />
+                    <div className="h-8 rounded bg-slate-100 animate-pulse" />
+                    <div className="h-8 rounded bg-slate-100 animate-pulse" />
+                  </div>
+                </div>
+                <div className="h-9 w-full rounded-xl bg-slate-100 animate-pulse mt-2" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : competencies.length > 0 ? (
         <div>
           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
             Your Mapped Competencies — Select for Adaptive Evaluation

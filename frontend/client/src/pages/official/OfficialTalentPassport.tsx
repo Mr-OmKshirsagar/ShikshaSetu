@@ -135,23 +135,11 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
     );
   };
 
-  if (loading && !profile) {
-    return (
-      <div className="space-y-6 animate-pulse p-6">
-        <div className="h-44 rounded-3xl bg-slate-200/70" />
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="h-80 rounded-2xl bg-slate-200/50" />
-          <div className="h-80 rounded-2xl bg-slate-200/50" />
-        </div>
-      </div>
-    );
-  }
-
   const readinessPct = Math.round((profile?.profile_readiness || 0) * 100);
 
   return (
     <div className="space-y-8 anim-page-enter">
-      {/* ── Hero Banner ── */}
+      {/* ── Hero Banner (Stationary) ── */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#123057] via-[#1a3d6d] to-[#087f76] p-7 sm:p-8 text-white shadow-lg anim-fade-up">
         <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
           <div>
@@ -165,15 +153,15 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
             <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-slate-200">
               <span className="flex items-center gap-1.5">
                 <Briefcase size={14} className="text-[#38d9c0]" />
-                {profile?.designation || "Statistical Officer"}
+                {profile?.designation || user?.designation || "Statistical Officer"}
               </span>
               <span>·</span>
               <span className="flex items-center gap-1.5">
                 <Building size={14} className="text-[#38d9c0]" />
-                {profile?.department || "Ministry of Statistics & PI"}
+                {profile?.department || user?.department || "Ministry of Statistics & PI"}
               </span>
               <span>·</span>
-              <span className="text-slate-300">ID: {profile?.employee_id || "GOV-OFFICIAL"}</span>
+              <span className="text-slate-300">ID: {profile?.employee_id || user?.employee_id || "GOV-OFFICIAL"}</span>
             </div>
           </div>
 
@@ -181,17 +169,34 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
           <div className="rounded-2xl border border-white/20 bg-white/10 p-4.5 backdrop-blur-md shrink-0 sm:w-64">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-200">
               <span>Talent Profile Readiness</span>
-              <span className="font-bold text-[#38d9c0] text-sm">{readinessPct}%</span>
+              {loading && !profile ? (
+                <span className="inline-block h-4 w-10 bg-white/20 rounded animate-pulse" />
+              ) : (
+                <span className="font-bold text-[#38d9c0] text-sm">{readinessPct}%</span>
+              )}
             </div>
             <div className="mt-2 h-2 w-full rounded-full bg-black/20 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#38d9c0] to-[#2dd4bf] transition-all duration-700"
-                style={{ width: `${readinessPct}%` }}
-              />
+              {loading && !profile ? (
+                <div className="h-full w-2/3 rounded-full bg-white/30 animate-pulse" />
+              ) : (
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#38d9c0] to-[#2dd4bf] transition-all duration-700"
+                  style={{ width: `${readinessPct}%` }}
+                />
+              )}
             </div>
             <div className="mt-2 flex items-center justify-between text-[11px] text-slate-300">
-              <span>{profile?.verified_competencies.length || 0} Competencies</span>
-              <span>{Math.round((profile?.average_confidence || 0) * 100)}% Confidence</span>
+              {loading && !profile ? (
+                <>
+                  <span className="inline-block h-3 w-16 bg-white/20 rounded animate-pulse" />
+                  <span className="inline-block h-3 w-16 bg-white/20 rounded animate-pulse" />
+                </>
+              ) : (
+                <>
+                  <span>{profile?.verified_competencies?.length || 0} Competencies</span>
+                  <span>{Math.round((profile?.average_confidence || 0) * 100)}% Confidence</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -380,7 +385,28 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
           </span>
         </div>
 
-        {opportunities.length === 0 ? (
+        {loading && opportunities.length === 0 ? (
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-5 space-y-3 animate-pulse"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-24 rounded bg-slate-200/80" />
+                  <div className="h-4 w-16 rounded bg-slate-200/80" />
+                </div>
+                <div className="h-5 w-3/4 rounded bg-slate-200/80" />
+                <div className="h-3 w-full rounded bg-slate-200/60" />
+                <div className="h-3 w-1/2 rounded bg-slate-200/60" />
+                <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
+                  <div className="h-3 w-32 rounded bg-slate-200/60" />
+                  <div className="h-6 w-24 rounded-lg bg-slate-200/80" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : opportunities.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
             <Info size={28} className="mx-auto text-slate-400" />
             <h3 className="mt-2 text-sm font-bold text-[#123057]">
@@ -478,38 +504,59 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
           </button>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {profile?.verified_competencies.map((comp) => {
-            const confPct = Math.round(comp.confidence * 100);
-            return (
+        {loading && !profile ? (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
               <div
-                key={comp.competency_id}
-                className="rounded-xl border border-slate-200/80 bg-[#f8fafc] p-4 hover:border-slate-300 transition-all"
+                key={i}
+                className="rounded-xl border border-slate-200/80 bg-[#f8fafc] p-4 space-y-3 animate-pulse"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#087f76]">
-                    {comp.domain || "STATISTICAL"}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                    <CheckCircle2 size={11} />
-                    Verified
-                  </span>
+                <div className="flex justify-between items-center">
+                  <div className="h-3 w-20 rounded bg-slate-200/80" />
+                  <div className="h-4 w-14 rounded-full bg-slate-200/80" />
                 </div>
-                <h3 className="mt-1 text-sm font-bold text-[#123057]">{comp.competency_name}</h3>
-                <div className="mt-3 flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-[#123057]">
-                    {comp.current_level.toFixed(1)}{" "}
-                    <span className="text-xs font-normal text-slate-400">/ 5.0</span>
-                  </span>
-                  <span className="text-xs text-slate-500">{confPct}% confidence</span>
-                </div>
-                <div className="mt-2 text-[11px] text-slate-400">
-                  {comp.evidence_count} evidence records on ledger
+                <div className="h-4 w-36 rounded bg-slate-200/80" />
+                <div className="flex justify-between items-baseline pt-2">
+                  <div className="h-6 w-16 rounded bg-slate-200/80" />
+                  <div className="h-3 w-20 rounded bg-slate-200/60" />
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {profile?.verified_competencies?.map((comp) => {
+              const confPct = Math.round(comp.confidence * 100);
+              return (
+                <div
+                  key={comp.competency_id}
+                  className="rounded-xl border border-slate-200/80 bg-[#f8fafc] p-4 hover:border-slate-300 transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#087f76]">
+                      {comp.domain || "STATISTICAL"}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                      <CheckCircle2 size={11} />
+                      Verified
+                    </span>
+                  </div>
+                  <h3 className="mt-1 text-sm font-bold text-[#123057]">{comp.competency_name}</h3>
+                  <div className="mt-3 flex items-baseline justify-between">
+                    <span className="text-2xl font-bold text-[#123057]">
+                      {comp.current_level.toFixed(1)}{" "}
+                      <span className="text-xs font-normal text-slate-400">/ 5.0</span>
+                    </span>
+                    <span className="text-xs text-slate-500">{confPct}% confidence</span>
+                  </div>
+                  <div className="mt-2 text-[11px] text-slate-400">
+                    {comp.evidence_count} evidence records on ledger
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </AnimatedSection>
 
       {/* ── Training & Knowledge Experience ── */}
@@ -524,7 +571,11 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
           <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4 text-center">
             <span className="text-xs font-bold text-slate-400 uppercase">Service Experience</span>
             <div className="mt-1 text-2xl font-extrabold text-[#123057]">
-              {profile?.years_experience || 5} Years
+              {loading && !profile ? (
+                <div className="h-7 w-16 mx-auto rounded bg-slate-200/80 animate-pulse mt-1" />
+              ) : (
+                `${profile?.years_experience || 5} Years`
+              )}
             </div>
             <span className="text-[11px] text-slate-500">Government service</span>
           </div>
@@ -532,7 +583,11 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
           <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4 text-center">
             <span className="text-xs font-bold text-slate-400 uppercase">Completed Learning</span>
             <div className="mt-1 text-2xl font-extrabold text-[#087f76]">
-              {profile?.completed_learning_count || 0}
+              {loading && !profile ? (
+                <div className="h-7 w-12 mx-auto rounded bg-slate-200/80 animate-pulse mt-1" />
+              ) : (
+                profile?.completed_learning_count || 0
+              )}
             </div>
             <span className="text-[11px] text-slate-500">iGOT / NSSTA activities</span>
           </div>
@@ -540,7 +595,11 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
           <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4 text-center">
             <span className="text-xs font-bold text-slate-400 uppercase">Training Materials</span>
             <div className="mt-1 text-2xl font-extrabold text-[#123057]">
-              {profile?.training_materials_count || 0}
+              {loading && !profile ? (
+                <div className="h-7 w-12 mx-auto rounded bg-slate-200/80 animate-pulse mt-1" />
+              ) : (
+                profile?.training_materials_count || 0
+              )}
             </div>
             <span className="text-[11px] text-slate-500">Authored or reviewed</span>
           </div>
@@ -548,7 +607,11 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
           <div className="rounded-xl border border-slate-200 bg-[#f8fafc] p-4 text-center">
             <span className="text-xs font-bold text-slate-400 uppercase">Learners Mentored</span>
             <div className="mt-1 text-2xl font-extrabold text-[#ef7e37]">
-              {profile?.learners_trained_count || 0}
+              {loading && !profile ? (
+                <div className="h-7 w-12 mx-auto rounded bg-slate-200/80 animate-pulse mt-1" />
+              ) : (
+                profile?.learners_trained_count || 0
+              )}
             </div>
             <span className="text-[11px] text-slate-500">Through training quizzes</span>
           </div>
