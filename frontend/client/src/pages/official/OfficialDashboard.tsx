@@ -375,7 +375,7 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
                           {codeName} · {domainName}
                         </span>
                         <span className="inline-flex items-center rounded-full bg-[#fff1e7] px-2.5 py-0.5 text-[11px] font-bold text-[#c2551a]">
-                          Gap: {gap.gap != null ? gap.gap.toFixed(1) : "—"}
+                          Gap: {gap.gap != null ? <NumberReveal value={gap.gap} decimals={1} /> : "—"}
                         </span>
                       </div>
 
@@ -386,20 +386,20 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
                       {/* Level Bar */}
                       <div className="mt-2.5">
                         <div className="flex justify-between text-xs text-slate-500 mb-1.5 font-normal">
-                          <span>Current: <strong className="text-[#123057] font-bold">{current.toFixed(1)}</strong></span>
-                          <span>Required: <strong className="text-[#123057] font-bold">{required.toFixed(1)}</strong></span>
+                          <span>Current: <strong className="text-[#123057] font-bold"><NumberReveal value={current} decimals={1} /></strong></span>
+                          <span>Required: <strong className="text-[#123057] font-bold"><NumberReveal value={required} decimals={1} /></strong></span>
                         </div>
-                        <div className="h-2 w-full rounded-full bg-[#e2e8f0] overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-[#0a6c67] transition-all duration-500"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
+                        <ProgressBarFill
+                          percent={pct}
+                          className="h-2 w-full rounded-full bg-[#e2e8f0] overflow-hidden"
+                          fillClassName="h-full rounded-full bg-[#0a6c67]"
+                          durationMs={800}
+                        />
                       </div>
 
                       <div className="mt-3.5 flex items-center justify-between text-xs pt-1">
                         <span className="text-slate-400 font-normal">
-                          Priority {gap.priority || idx + 1} · {Math.round((gap.confidence ?? 0.85) * 100)}% confidence
+                          Priority {gap.priority || idx + 1} · <NumberReveal value={Math.round((gap.confidence ?? 0.85) * 100)} suffix="%" /> confidence
                         </span>
                         <button
                           onClick={() =>

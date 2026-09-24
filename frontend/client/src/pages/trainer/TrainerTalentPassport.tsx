@@ -22,7 +22,7 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { AnimatedSection } from "@/components/motion/MotionUtils";
+import { AnimatedSection, NumberReveal } from "@/components/motion/MotionUtils";
 
 export function TrainerTalentPassport() {
   const { user } = useAuth();
@@ -142,7 +142,7 @@ export function TrainerTalentPassport() {
             {loading && !profile ? (
               <div className="h-9 w-12 rounded bg-slate-200/80 animate-pulse" />
             ) : (
-              profile?.training_materials_count || 0
+              <NumberReveal value={profile?.training_materials_count || 0} />
             )}
           </div>
           <span className="text-[11px] text-slate-500">Curricula & documents uploaded</span>
@@ -157,7 +157,7 @@ export function TrainerTalentPassport() {
             {loading && !profile ? (
               <div className="h-9 w-12 rounded bg-slate-200/80 animate-pulse" />
             ) : (
-              profile?.quizzes_authored_count || 0
+              <NumberReveal value={profile?.quizzes_authored_count || 0} />
             )}
           </div>
           <span className="text-[11px] text-slate-500">Formal & practice assessments</span>
@@ -172,7 +172,7 @@ export function TrainerTalentPassport() {
             {loading && !profile ? (
               <div className="h-9 w-14 rounded bg-slate-200/80 animate-pulse" />
             ) : (
-              profile?.learners_trained_count || 0
+              <NumberReveal value={profile?.learners_trained_count || 0} />
             )}
           </div>
           <span className="text-[11px] text-slate-500">Civil servants assessed</span>
@@ -187,7 +187,7 @@ export function TrainerTalentPassport() {
             {loading && !profile ? (
               <div className="h-9 w-16 rounded bg-slate-200/80 animate-pulse" />
             ) : (
-              `${Math.round((profile?.average_confidence || 0.85) * 100)}%`
+              <NumberReveal value={Math.round((profile?.average_confidence || 0.85) * 100)} suffix="%" />
             )}
           </div>
           <span className="text-[11px] text-slate-500">High authoritative reliability</span>

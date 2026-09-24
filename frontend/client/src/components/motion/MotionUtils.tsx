@@ -124,10 +124,24 @@ export function ProgressBarFill({
   fillClassName,
   colorClass = "bg-[#0f9f92]",
   heightClass = "h-2",
-  durationMs = 600,
+  durationMs = 700,
 }: ProgressBarFillProps) {
   const actualPercent = percent ?? percentage ?? value ?? 0;
   const clamped = Math.max(0, Math.min(100, actualPercent || 0));
+
+  const [currentWidth, setCurrentWidth] = useState(0);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCurrentWidth(clamped);
+      return;
+    }
+
+    const timer = requestAnimationFrame(() => {
+      setCurrentWidth(clamped);
+    });
+    return () => cancelAnimationFrame(timer);
+  }, [clamped]);
 
   const wrapperClass = className ?? `${heightClass} w-full rounded-full bg-slate-100 overflow-hidden`;
   const innerClass = fillClassName ?? `h-full rounded-full ${colorClass}`;
@@ -137,7 +151,7 @@ export function ProgressBarFill({
       <div
         className={innerClass}
         style={{
-          width: `${clamped}%`,
+          width: `${currentWidth}%`,
           transition: `width ${durationMs}ms cubic-bezier(0.16, 1, 0.3, 1)`,
         }}
       />
@@ -279,19 +293,94 @@ export function AnimatedSignalBar({
         <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 pt-0.5">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[#087f76] inline-block" />
-            <span>Current: <strong>{currentLevel != null ? current.toFixed(1) : "Not Assessed"}</strong></span>
+            <span>
+              Current: <strong>{currentLevel != null ? <NumberReveal value={current} decimals={1} /> : "Not Assessed"}</strong>
+            </span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[#123057] inline-block" />
-            <span>Target: <strong>{required.toFixed(1)}</strong></span>
+            <span>
+              Target: <strong><NumberReveal value={required} decimals={1} /></strong>
+            </span>
             {gap > 0 && (
               <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.2 text-[10px] font-bold text-orange-800">
-                Gap: {gap.toFixed(1)}
+                Gap: <NumberReveal value={gap} decimals={1} />
               </span>
             )}
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * AnimatedGraphBar
+ * Smoothly expanding horizontal graph bar with animated numeric count-up header.
+ */
+interface AnimatedGraphBarProps {
+  value: number;
+  maxValue?: number;
+  label?: string;
+  sublabel?: string;
+  suffix?: string;
+  prefix?: string;
+  decimals?: number;
+  colorClass?: string;
+  trackClass?: string;
+  heightClass?: string;
+  className?: string;
+  durationMs?: number;
+}
+
+export function AnimatedGraphBar({
+  value,
+  maxValue = 100,
+  label,
+  sublabel,
+  suffix = "",
+  prefix = "",
+  decimals = 0,
+  colorClass = "bg-[#087f76]",
+  trackClass = "bg-slate-100",
+  heightClass = "h-2.5",
+  className = "",
+  durationMs = 750,
+}: AnimatedGraphBarProps) {
+  const pct = Math.min(100, Math.max(0, (value / maxValue) * 100));
+  const [fillPct, setFillPct] = useState(0);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setFillPct(pct);
+      return;
+    }
+    const raf = requestAnimationFrame(() => setFillPct(pct));
+    return () => cancelAnimationFrame(raf);
+  }, [pct]);
+
+  return (
+    <div className={`space-y-1.5 ${className}`}>
+      {(label || sublabel) && (
+        <div className="flex justify-between items-center text-xs">
+          <div className="flex items-center gap-2">
+            {label && <span className="font-bold text-[#123057]">{label}</span>}
+            {sublabel && <span className="text-[11px] text-slate-400">{sublabel}</span>}
+          </div>
+          <span className="font-mono font-bold text-slate-700">
+            <NumberReveal value={value} decimals={decimals} prefix={prefix} suffix={suffix} />
+          </span>
+        </div>
+      )}
+      <div className={`w-full rounded-full ${trackClass} ${heightClass} overflow-hidden`}>
+        <div
+          className={`h-full rounded-full ${colorClass}`}
+          style={{
+            width: `${fillPct}%`,
+            transition: `width ${durationMs}ms cubic-bezier(0.16, 1, 0.3, 1)`,
+          }}
+        />
+      </div>
     </div>
   );
 }
