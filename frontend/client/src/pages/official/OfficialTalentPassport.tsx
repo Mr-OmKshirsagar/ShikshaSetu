@@ -66,28 +66,40 @@ export function OfficialTalentPassport({ onNavigate }: OfficialTalentPassportPro
     explanation: MatchExplanation;
   } | null>(null);
 
-  const fetchProfileAndOpps = async () => {
-    try {
-      setLoading(true);
-      const [profData, oppsData] = await Promise.all([
-        api.talent.getProfile(),
-        api.talent.getOpportunities().catch(() => ({ total: 0, opportunities: [] })),
-      ]);
+  const [loadingOpps, setLoadingOpps] = useState(true);
 
-      setProfile(profData);
-      setOpportunities(oppsData.opportunities || []);
+  const fetchProfileAndOpps = () => {
+    // 1. Fetch Profile (renders hero, readiness, competencies, privacy settings)
+    setLoading(true);
+    api.talent.getProfile()
+      .then((profData) => {
+        setProfile(profData);
+        if (profData.preferences) {
+          setOptIn(profData.preferences.opt_in_enabled);
+          setVisibility(profData.preferences.visibility_level || "PRIVATE");
+          setAvailable(profData.preferences.available_for_opportunities);
+          setSelectedTypes(profData.preferences.opportunity_types || []);
+        }
+      })
+      .catch((err: any) => {
+        toast.error(err.message || "Failed to load Talent Passport data");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
-      if (profData.preferences) {
-        setOptIn(profData.preferences.opt_in_enabled);
-        setVisibility(profData.preferences.visibility_level || "PRIVATE");
-        setAvailable(profData.preferences.available_for_opportunities);
-        setSelectedTypes(profData.preferences.opportunity_types || []);
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to load Talent Passport data");
-    } finally {
-      setLoading(false);
-    }
+    // 2. Fetch Opportunities independently without blocking the main passport UI
+    setLoadingOpps(true);
+    api.talent.getOpportunities()
+      .then((oppsData) => {
+        setOpportunities(oppsData.opportunities || []);
+      })
+      .catch(() => {
+        setOpportunities([]);
+      })
+      .finally(() => {
+        setLoadingOpps(false);
+      });
   };
 
   useEffect(() => {

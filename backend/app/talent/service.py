@@ -63,19 +63,42 @@ def build_talent_profile(database: Database, user_id: str) -> Optional[TalentPro
     # Build verified competencies
     verified_competencies = []
     total_confidence = 0.0
-    
+
+    raw_comp_ids = [p.get("competency_id") for p in competency_profiles if p.get("competency_id")]
+    search_ids = []
+    for cid in raw_comp_ids:
+        search_ids.append(cid)
+        if isinstance(cid, str):
+            oid = _object_id(cid)
+            if oid:
+                search_ids.append(oid)
+        elif isinstance(cid, ObjectId):
+            search_ids.append(str(cid))
+
+    # Batch fetch competencies
+    competencies_map = {}
+    if hasattr(database, "competencies") and search_ids:
+        for c in database.competencies.find({"_id": {"$in": search_ids}}):
+            competencies_map[c["_id"]] = c
+            competencies_map[str(c["_id"])] = c
+
+    # Batch fetch role requirements
+    role_req_map = {}
+    if role and hasattr(database, "role_requirements") and search_ids:
+        for rr in database.role_requirements.find({
+            "role_id": role["_id"],
+            "competency_id": {"$in": search_ids}
+        }):
+            role_req_map[rr.get("competency_id")] = rr.get("required_level")
+            role_req_map[str(rr.get("competency_id"))] = rr.get("required_level")
+
     for profile in competency_profiles:
         comp_id = profile.get("competency_id")
         if not comp_id:
             continue
         
-        # Get competency details
-        competency = database.competencies.find_one({"_id": comp_id}) if hasattr(database, "competencies") else None
-        if not competency and isinstance(comp_id, str):
-            comp_oid = _object_id(comp_id)
-            if comp_oid and hasattr(database, "competencies"):
-                competency = database.competencies.find_one({"_id": comp_oid})
-        
+        # Get competency details from batched map
+        competency = competencies_map.get(comp_id) or competencies_map.get(str(comp_id))
         if not competency:
             continue
         
@@ -87,15 +110,8 @@ def build_talent_profile(database: Database, user_id: str) -> Optional[TalentPro
                 "competency_id": comp_id
             })
         
-        # Get required level from role requirements
-        required_level = None
-        if role and hasattr(database, "role_requirements"):
-            role_req = database.role_requirements.find_one({
-                "role_id": role["_id"],
-                "competency_id": comp_id
-            })
-            if role_req:
-                required_level = role_req.get("required_level")
+        # Get required level from batched role requirements
+        required_level = role_req_map.get(comp_id) or role_req_map.get(str(comp_id))
         
         raw_level = profile.get("current_level")
         if raw_level is None:
@@ -267,7 +283,8 @@ def calculate_profile_readiness(
 def check_eligibility_and_match(
     database: Database,
     opportunity: dict,
-    user_id: str
+    user_id: str,
+    profile: Optional[TalentProfile] = None
 ) -> Tuple[bool, float, MatchExplanation]:
     """
     Deterministic eligibility check and scoring.
@@ -289,8 +306,9 @@ def check_eligibility_and_match(
     if not user_oid:
         return False, 0.0, None
     
-    # Get talent profile
-    profile = build_talent_profile(database, user_id)
+    # Get talent profile (reuse provided profile to avoid redundant DB builds)
+    if profile is None:
+        profile = build_talent_profile(database, user_id)
     if not profile:
         return False, 0.0, None
     
@@ -565,17 +583,19 @@ def match_opportunity_to_talent_pool(
     matches = []
     
     for uid in user_ids:
+        u_profile = build_talent_profile(database, uid)
+        if not u_profile:
+            continue
+
         eligible, match_score, explanation = check_eligibility_and_match(
-            database, opportunity, uid
+            database, opportunity, uid, profile=u_profile
         )
         
         if eligible:
             u_oid = _object_id(uid)
             user = database.users.find_one({"_id": u_oid}) if u_oid else None
             if user:
-                # Profile readiness already computed on profile
-                u_profile = build_talent_profile(database, uid)
-                u_readiness = u_profile.profile_readiness if u_profile else 0.0
+                u_readiness = u_profile.profile_readiness
 
                 matches.append({
                     "user_id": uid,
@@ -610,11 +630,19 @@ def get_user_eligible_opportunities(
         "status": OpportunityStatus.PUBLISHED
     }).sort("created_at", -1))
     
+    if not published_opps:
+        return []
+
+    # Build talent profile ONCE and reuse across all opportunity checks
+    profile = build_talent_profile(database, user_id)
+    if not profile:
+        return []
+
     results = []
     for opp in published_opps:
         opp_id = str(opp["_id"])
         eligible, match_score, explanation = check_eligibility_and_match(
-            database, opp, user_id
+            database, opp, user_id, profile=profile
         )
         
         # Build GovernmentOpportunity schema

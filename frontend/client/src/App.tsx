@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from "react";
+import React, { useState, useEffect, useCallback, Suspense, lazy } from "react";
 import { useLocation } from "wouter";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -171,11 +171,16 @@ function TrainerApp() {
   const rawSlug = match && match[1] ? match[1].toLowerCase() : "";
   const activePage = TRAINER_SLUG_MAP[rawSlug] || "Dashboard";
 
-  // Prefetch commonly accessed trainer pages
+  // Prefetch all trainer pages so section clicks are instantaneous
   usePrefetchRoutes([
+    { loader: () => import("./pages/trainer/TrainerDashboard"), key: "trainer-dashboard" },
     { loader: () => import("./pages/trainer/TrainerMaterials"), key: "trainer-materials" },
     { loader: () => import("./pages/trainer/TrainerQuizStudio"), key: "trainer-quiz-studio" },
     { loader: () => import("./pages/trainer/TrainerQuestionGenerator"), key: "trainer-question-gen" },
+    { loader: () => import("./pages/trainer/TrainerQuestionReview"), key: "trainer-question-review" },
+    { loader: () => import("./pages/trainer/TrainerLearnerResults"), key: "trainer-learner-results" },
+    { loader: () => import("./pages/trainer/TrainerTalentPassport"), key: "trainer-talent-passport" },
+    { loader: () => import("./pages/trainer/TrainerProfile"), key: "trainer-profile" },
   ]);
 
   useEffect(() => {
@@ -184,7 +189,7 @@ function TrainerApp() {
     }
   }, [rawSlug, navigate]);
 
-  const handleNavigate = (page: string, context?: { materialId?: string; quizId?: string }) => {
+  const handleNavigate = useCallback((page: string, context?: { materialId?: string; quizId?: string }) => {
     if (context) {
       setNavContext(context);
     }
@@ -192,7 +197,7 @@ function TrainerApp() {
     const canonicalPage = TRAINER_SLUG_MAP[raw] || page;
     const slug = toSlug(canonicalPage);
     navigate(`/trainer/${slug}`);
-  };
+  }, [navigate]);
 
   const renderPage = () => {
     switch (activePage) {
@@ -267,11 +272,19 @@ function AdminApp() {
   const rawSlug = match && match[1] ? match[1].toLowerCase() : "";
   const activePage = ADMIN_SLUG_MAP[rawSlug] || "Dashboard";
 
-  // Prefetch commonly accessed admin pages
+  // Prefetch all admin pages so section clicks are instantaneous
   usePrefetchRoutes([
+    { loader: () => import("./pages/admin/AdminDashboard"), key: "admin-dashboard" },
     { loader: () => import("./pages/admin/WorkforceOverview"), key: "admin-workforce" },
     { loader: () => import("./pages/admin/CompetencyAnalytics"), key: "admin-competency" },
     { loader: () => import("./pages/admin/SkillGapAnalytics"), key: "admin-skill-gaps" },
+    { loader: () => import("./pages/admin/TrainingEffectiveness"), key: "admin-training-eff" },
+    { loader: () => import("./pages/admin/EmergingSkills"), key: "admin-emerging-skills" },
+    { loader: () => import("./pages/admin/CapacityPlanning"), key: "admin-capacity-planning" },
+    { loader: () => import("./pages/admin/AdminTalentNetwork"), key: "admin-talent-net" },
+    { loader: () => import("./pages/admin/AdminUsers"), key: "admin-users" },
+    { loader: () => import("./pages/admin/AdminReports"), key: "admin-reports" },
+    { loader: () => import("./pages/admin/AdminProfile"), key: "admin-profile" },
   ]);
 
   useEffect(() => {
@@ -280,12 +293,12 @@ function AdminApp() {
     }
   }, [rawSlug, navigate]);
 
-  const handleNavigate = (page: string) => {
+  const handleNavigate = useCallback((page: string) => {
     const raw = toSlug(page);
     const canonicalPage = ADMIN_SLUG_MAP[raw] || page;
     const slug = toSlug(canonicalPage);
     navigate(`/admin/${slug}`);
-  };
+  }, [navigate]);
 
   const renderPage = () => {
     switch (activePage) {
@@ -349,12 +362,19 @@ function OfficialApp() {
   const rawSlug = match && match[1] ? match[1].toLowerCase() : "";
   const activePage = OFFICIAL_SLUG_MAP[rawSlug] || "Dashboard";
 
-  // Prefetch commonly accessed official pages
+  // Prefetch all official pages so section clicks are instantaneous
   usePrefetchRoutes([
+    { loader: () => import("./pages/official/OfficialDashboard"), key: "official-dashboard" },
     { loader: () => import("./pages/official/OfficialCompetencies"), key: "official-competencies" },
     { loader: () => import("./pages/official/OfficialAssessments"), key: "official-assessments" },
     { loader: () => import("./pages/official/OfficialSkillGaps"), key: "official-skill-gaps" },
+    { loader: () => import("./pages/official/OfficialRecommendations"), key: "official-recommendations" },
     { loader: () => import("./pages/official/OfficialLearning"), key: "official-learning" },
+    { loader: () => import("./pages/official/OfficialQuizzes"), key: "official-quizzes" },
+    { loader: () => import("./pages/official/OfficialEvidence"), key: "official-evidence" },
+    { loader: () => import("./pages/official/OfficialProgress"), key: "official-progress" },
+    { loader: () => import("./pages/official/OfficialTalentPassport"), key: "official-talent-passport" },
+    { loader: () => import("./pages/official/OfficialProfile"), key: "official-profile" },
   ]);
 
   useEffect(() => {
@@ -363,7 +383,7 @@ function OfficialApp() {
     }
   }, [rawSlug, navigate]);
 
-  const handleNavigate = (page: string, context?: { competencyCode?: string; activityId?: string }) => {
+  const handleNavigate = useCallback((page: string, context?: { competencyCode?: string; activityId?: string }) => {
     if (context) {
       setNavContext(context);
     }
@@ -371,7 +391,7 @@ function OfficialApp() {
     const canonicalPage = OFFICIAL_SLUG_MAP[raw] || page;
     const slug = toSlug(canonicalPage);
     navigate(`/official/${slug}`);
-  };
+  }, [navigate]);
 
   const renderPage = () => {
     switch (activePage) {
