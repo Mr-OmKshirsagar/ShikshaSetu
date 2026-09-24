@@ -2,7 +2,7 @@ import React from "react";
 import { Globe } from "lucide-react";
 import { useTranslation, LANGUAGES } from "@/i18n";
 
-export function LanguageToggle() {
+export const LanguageToggle = React.memo(function LanguageToggle() {
   const { language, setLanguage, t } = useTranslation();
 
   return (
@@ -30,6 +30,6 @@ export function LanguageToggle() {
       })}
     </div>
   );
-}
+});
 
 export default LanguageToggle;

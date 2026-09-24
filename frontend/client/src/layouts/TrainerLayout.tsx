@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   BarChart2,
   BookOpen,
@@ -10,7 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useTranslation } from "@/i18n";
-import { DashboardShell, DashboardNavItem } from "./DashboardShell";
+import { DashboardShell, DashboardNavItem, DashboardRoleTheme } from "./DashboardShell";
 
 interface TrainerLayoutProps {
   children: React.ReactNode;
@@ -18,19 +18,32 @@ interface TrainerLayoutProps {
   onNavigate: (page: string) => void;
 }
 
+const TRAINER_ROLE_THEME: DashboardRoleTheme = {
+  activeNavBg: "bg-[#fff2e8]",
+  activeNavText: "text-[#c2510e]",
+  activeIndicator: "bg-[#ef7e37]",
+  hoverNavBg: "hover:bg-orange-50 hover:text-[#c2510e]",
+  avatarBg: "bg-orange-100 text-[#c2510e]",
+  badgeDotBg: "bg-amber-500",
+  headerTitleColor: "text-[#123057]",
+};
+
 export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayoutProps) {
   const { isHindi } = useTranslation();
 
-  const navItems: DashboardNavItem[] = [
-    { id: "Dashboard", label: isHindi ? "डैशबोर्ड" : "Dashboard", icon: LayoutDashboard },
-    { id: "Learning Materials", label: isHindi ? "प्रशिक्षण सामग्री" : "Learning Materials", icon: BookOpen },
-    { id: "AI Question Generator", label: isHindi ? "एआई प्रश्न निर्माता" : "AI Question Generator", icon: FileQuestion },
-    { id: "Question Review", label: isHindi ? "समीक्षा स्टूडियो" : "Question Review", icon: CheckSquare },
-    { id: "Quiz Studio", label: isHindi ? "प्रश्नोत्तरी स्टूडियो" : "Quiz Studio", icon: PenTool },
-    { id: "Learner Results", label: isHindi ? "प्रशिक्षु परिणाम" : "Learner Results", icon: BarChart2 },
-    { id: "Trainer Talent Passport", label: isHindi ? "प्रशिक्षक टैलेंट पासपोर्ट" : "Trainer Talent Passport", icon: Sparkles },
-    { id: "Profile", label: isHindi ? "प्रोफ़ाइल" : "Profile", icon: UserRound },
-  ];
+  const navItems: DashboardNavItem[] = useMemo(
+    () => [
+      { id: "Dashboard", label: isHindi ? "डैशबोर्ड" : "Dashboard", icon: LayoutDashboard },
+      { id: "Learning Materials", label: isHindi ? "प्रशिक्षण सामग्री" : "Learning Materials", icon: BookOpen },
+      { id: "AI Question Generator", label: isHindi ? "एआई प्रश्न निर्माता" : "AI Question Generator", icon: FileQuestion },
+      { id: "Question Review", label: isHindi ? "समीक्षा स्टूडियो" : "Question Review", icon: CheckSquare },
+      { id: "Quiz Studio", label: isHindi ? "प्रश्नोत्तरी स्टूडियो" : "Quiz Studio", icon: PenTool },
+      { id: "Learner Results", label: isHindi ? "प्रशिक्षु परिणाम" : "Learner Results", icon: BarChart2 },
+      { id: "Trainer Talent Passport", label: isHindi ? "प्रशिक्षक टैलेंट पासपोर्ट" : "Trainer Talent Passport", icon: Sparkles },
+      { id: "Profile", label: isHindi ? "प्रोफ़ाइल" : "Profile", icon: UserRound },
+    ],
+    [isHindi]
+  );
 
   return (
     <DashboardShell
@@ -42,15 +55,7 @@ export function TrainerLayout({ children, activePage, onNavigate }: TrainerLayou
       logoHref="/trainer"
       roleBadgeText="Lead Faculty"
       bgClassName="bg-[#fdf5ee]"
-      roleTheme={{
-        activeNavBg: "bg-[#fff2e8]",
-        activeNavText: "text-[#c2510e]",
-        activeIndicator: "bg-[#ef7e37]",
-        hoverNavBg: "hover:bg-orange-50 hover:text-[#c2510e]",
-        avatarBg: "bg-orange-100 text-[#c2510e]",
-        badgeDotBg: "bg-amber-500",
-        headerTitleColor: "text-[#c2510e]",
-      }}
+      roleTheme={TRAINER_ROLE_THEME}
     >
       {children}
     </DashboardShell>

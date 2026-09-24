@@ -40,7 +40,7 @@ interface CapabilityAssistantProps {
   headerMode?: boolean;
 }
 
-export function CapabilityAssistant({
+export const CapabilityAssistant = React.memo(function CapabilityAssistant({
   currentPage = "Dashboard",
   onNavigate,
   headerMode = false,
@@ -264,7 +264,7 @@ export function CapabilityAssistant({
             </span>
           </div>
           <span className="text-xs font-black tracking-wide">{t("assistant.title")}</span>
-          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-teal-200 anim-badge-pop">
+          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-teal-200">
             Assistant
           </span>
         </button>
@@ -477,6 +477,6 @@ export function CapabilityAssistant({
       )}
     </>
   );
-}
+});
 
 export default CapabilityAssistant;
