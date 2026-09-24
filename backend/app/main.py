@@ -119,6 +119,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             content={"detail": "Too many requests. Please slow down and try again later."},
             headers={"Retry-After": "60"},
         )
+
+    @application.get("/", include_in_schema=False)
+    @application.head("/", include_in_schema=False)
+    async def root_health_check():
+        return {"status": "ok", "app": app_settings.app_name}
+
     application.include_router(health_router, prefix=app_settings.api_prefix)
     application.include_router(auth_router, prefix=app_settings.api_prefix)
     application.include_router(learning_materials_router, prefix=app_settings.api_prefix)
