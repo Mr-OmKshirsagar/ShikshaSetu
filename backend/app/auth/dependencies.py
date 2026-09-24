@@ -46,12 +46,18 @@ def require_role(*roles: AccessRole | str):
     allowed_values = set()
     for r in roles:
         val = r.value if isinstance(r, AccessRole) else str(r)
-        allowed_values.add(val)
-        if val in ("OFFICIAL", AccessRole.OFFICIAL.value):
+        allowed_values.add(val.upper())
+        if val.upper() in ("OFFICIAL", AccessRole.OFFICIAL.value):
             allowed_values.add("EMPLOYEE")
 
     def dependency(current_user: Annotated[dict, Depends(get_current_user)]) -> dict:
-        user_role = current_user.get("access_role")
+        raw_role = (
+            current_user.get("access_role")
+            or current_user.get("application_role")
+            or current_user.get("role")
+            or ""
+        )
+        user_role = str(raw_role).strip().upper()
         if user_role not in allowed_values:
             role_names = [r.value if isinstance(r, AccessRole) else str(r) for r in roles]
             raise HTTPException(

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- Orange to Green gradient arc (top) -->
+  <defs>
+    <linearGradient id="topArc" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bridgeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d9488;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Top decorative arc -->
+  <path d="M 100 60 Q 200 20, 300 60" stroke="url(#topArc)" stroke-width="8" fill="none" stroke-linecap="round"/>
+  
+  <!-- People and books circle (white background) -->
+  <circle cx="200" cy="100" r="65" fill="white" stroke="#e5e7eb" stroke-width="2"/>
+  
+  <!-- Left person -->
+  <circle cx="160" cy="100" r="8" fill="#1e40af"/>
+  <path d="M 150 110 Q 160 105, 170 110 L 175 130 L 145 130 Z" fill="#1e40af"/>
+  
+  <!-- Center person (head) -->
+  <circle cx="200" cy="85" r="10" fill="#1e40af"/>
+  
+  <!-- Right person -->
+  <circle cx="240" cy="100" r="8" fill="#1e40af"/>
+  <path d="M 230 110 Q 240 105, 250 110 L 255 130 L 225 130 Z" fill="#1e40af"/>
+  
+  <!-- Book leaves (left - blue) -->
+  <path d="M 180 105 Q 175 95, 180 85 Q 185 90, 185 100 Z" fill="#2563eb"/>
+  
+  <!-- Book leaves (right - teal) -->
+  <path d="M 220 105 Q 225 95, 220 85 Q 215 90, 215 100 Z" fill="#14b8a6"/>
+  
+  <!-- Open book base -->
+  <path d="M 170 115 L 170 135 Q 200 130, 230 135 L 230 115 Q 200 120, 170 115 Z" fill="#1e40af" opacity="0.3"/>
+  <line x1="200" y1="115" x2="200" y2="135" stroke="#1e40af" stroke-width="2"/>
+  
+  <!-- Bridge structure -->
+  <!-- Left pillar -->
+  <rect x="50" y="180" width="60" height="80" fill="url(#bridgeGradient)" rx="5"/>
+  <circle cx="80" cy="230" r="25" fill="white"/>
+  
+  <!-- Right pillar -->
+  <rect x="290" y="180" width="60" height="80" fill="url(#bridgeGradient)" rx="5"/>
+  <circle cx="320" cy="230" r="25" fill="white"/>
+  
+  <!-- Center dome/capitol building -->
+  <g transform="translate(200, 220)">
+    <!-- Base -->
+    <rect x="-25" y="10" width="50" height="30" fill="white" stroke="#1e40af" stroke-width="1.5"/>
+    <!-- Columns -->
+    <line x1="-20" y1="10" x2="-20" y2="40" stroke="#1e40af" stroke-width="2"/>
+    <line x1="-10" y1="10" x2="-10" y2="40" stroke="#1e40af" stroke-width="2"/>
+    <line x1="0" y1="10" x2="0" y2="40" stroke="#1e40af" stroke-width="2"/>
+    <line x1="10" y1="10" x2="10" y2="40" stroke="#1e40af" stroke-width="2"/>
+    <line x1="20" y1="10" x2="20" y2="40" stroke="#1e40af" stroke-width="2"/>
+    <!-- Dome -->
+    <circle cx="0" cy="0" r="20" fill="white" stroke="#1e40af" stroke-width="1.5"/>
+    <!-- Flag -->
+    <line x1="0" y1="-20" x2="0" y2="-35" stroke="#1e40af" stroke-width="1.5"/>
+    <path d="M 0 -35 L 10 -32 L 0 -29 Z" fill="#ef4444"/>
+  </g>
+  
+  <!-- Bridge arches -->
+  <path d="M 110 260 Q 155 220, 200 260" fill="none" stroke="url(#bridgeGradient)" stroke-width="15"/>
+  <path d="M 200 260 Q 245 220, 290 260" fill="none" stroke="url(#bridgeGradient)" stroke-width="15"/>
+  
+  <!-- Bottom platform -->
+  <rect x="40" y="255" width="320" height="10" fill="url(#bridgeGradient)"/>
+</svg>
