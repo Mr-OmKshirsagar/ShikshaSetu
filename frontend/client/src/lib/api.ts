@@ -1554,15 +1554,18 @@ export const api = {
 
   // ─── Government Talent & Opportunity Network namespace ──────────────────────
   talent: {
-    getProfile: () =>
-      request<TalentProfile>("/talent/profile", {}, { skipCache: true }),
-    updatePreferences: (data: Partial<TalentPreferences>) =>
-      request<TalentPreferences>("/talent/profile/preferences", {
+    getProfile: (options?: { skipCache?: boolean }) =>
+      request<TalentProfile>("/talent/profile", {}, { ttlMs: 60_000, ...options }),
+    updatePreferences: async (data: Partial<TalentPreferences>) => {
+      const res = await request<TalentPreferences>("/talent/profile/preferences", {
         method: "PATCH",
         body: JSON.stringify(data),
-      }),
-    getOpportunities: () =>
-      request<UserOpportunityListResponse>("/talent/opportunities", {}, { skipCache: true }),
+      });
+      clearApiCache("/talent");
+      return res;
+    },
+    getOpportunities: (options?: { skipCache?: boolean }) =>
+      request<UserOpportunityListResponse>("/talent/opportunities", {}, { ttlMs: 60_000, ...options }),
     getManagedOpportunities: (params?: { status?: string; department?: string }) => {
       const q = new URLSearchParams();
       if (params?.status) q.append("status", params.status);

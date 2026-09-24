@@ -36,29 +36,37 @@ export function TrainerTalentPassport() {
   const [visibility, setVisibility] = useState<VisibilityLevel>("PRIVATE");
   const [available, setAvailable] = useState(false);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        const [profData, oppsData] = await Promise.all([
-          api.talent.getProfile(),
-          api.talent.getOpportunities().catch(() => ({ total: 0, opportunities: [] })),
-        ]);
-        setProfile(profData);
-        setOpportunities(oppsData.opportunities || []);
+  const [loadingOpps, setLoadingOpps] = useState(true);
 
+  useEffect(() => {
+    setLoading(true);
+    api.talent.getProfile()
+      .then((profData) => {
+        setProfile(profData);
         if (profData.preferences) {
           setOptIn(profData.preferences.opt_in_enabled);
           setVisibility(profData.preferences.visibility_level || "PRIVATE");
           setAvailable(profData.preferences.available_for_opportunities);
         }
-      } catch (err: any) {
+      })
+      .catch(() => {
         toast.error("Failed to load Trainer Talent Passport");
-      } finally {
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    }
-    loadData();
+      });
+
+    setLoadingOpps(true);
+    api.talent.getOpportunities()
+      .then((oppsData) => {
+        setOpportunities(oppsData.opportunities || []);
+      })
+      .catch(() => {
+        setOpportunities([]);
+      })
+      .finally(() => {
+        setLoadingOpps(false);
+      });
   }, []);
 
   const handleSavePreferences = async () => {

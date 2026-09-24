@@ -176,6 +176,7 @@ function TrainerApp() {
     { loader: () => import("./pages/trainer/TrainerMaterials"), key: "trainer-materials" },
     { loader: () => import("./pages/trainer/TrainerQuizStudio"), key: "trainer-quiz-studio" },
     { loader: () => import("./pages/trainer/TrainerQuestionGenerator"), key: "trainer-question-gen" },
+    { loader: () => import("./pages/trainer/TrainerTalentPassport"), key: "trainer-talent-passport" },
   ]);
 
   useEffect(() => {
@@ -355,6 +356,7 @@ function OfficialApp() {
     { loader: () => import("./pages/official/OfficialAssessments"), key: "official-assessments" },
     { loader: () => import("./pages/official/OfficialSkillGaps"), key: "official-skill-gaps" },
     { loader: () => import("./pages/official/OfficialLearning"), key: "official-learning" },
+    { loader: () => import("./pages/official/OfficialTalentPassport"), key: "official-talent-passport" },
   ]);
 
   useEffect(() => {
