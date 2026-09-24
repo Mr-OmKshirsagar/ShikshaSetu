@@ -60,10 +60,6 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
     fetchProgress();
   }, []);
 
-  if (loading && !skillGaps && evidenceList.length === 0 && adaptiveHistory.length === 0) {
-    return <PageSkeleton />;
-  }
-
   // Calculate total learning time
   const totalMinutes = (activities?.activities || []).reduce(
     (acc, a) => acc + (a.duration_minutes || 0),
@@ -145,7 +141,7 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
 
   return (
     <div className="space-y-6 anim-page-enter max-w-4xl mx-auto">
-      {/* Header */}
+      {/* Header (Stationary) */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between anim-fade-up">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[#123057]">{t("nav.progress")}</h1>
@@ -163,7 +159,7 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
         </button>
       </div>
 
-      {/* 4-Card Summary */}
+      {/* 4-Card Summary (Stationary Card Containers) */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-2xl border border-[#dfe7f0] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-1">
           <div className="flex items-center justify-between text-slate-400">
@@ -171,9 +167,15 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
             <Clock size={18} className="text-purple-600" />
           </div>
           <div className="mt-3 text-3xl font-extrabold tracking-tight text-[#123057]">
-            <NumberReveal value={parseFloat(totalHours)} decimals={1} suffix=" hrs" />
+            {loading && activities === null ? (
+              <div className="h-9 w-20 rounded-lg bg-slate-200/80 animate-pulse" />
+            ) : (
+              <NumberReveal value={parseFloat(totalHours)} decimals={1} suffix=" hrs" />
+            )}
           </div>
-          <div className="mt-1 text-[11px] text-slate-400 font-medium">{totalMinutes} minutes logged</div>
+          <div className="mt-1 text-[11px] text-slate-400 font-medium">
+            {loading && activities === null ? "Loading activity logs..." : `${totalMinutes} minutes logged`}
+          </div>
         </div>
 
         <div className="rounded-2xl border border-[#dfe7f0] bg-white p-5 shadow-sm card-interactive anim-card-enter stagger-2">
@@ -182,7 +184,11 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
             <BookOpen size={18} className="text-teal-600" />
           </div>
           <div className="mt-3 text-3xl font-extrabold tracking-tight text-[#123057]">
-            <NumberReveal value={completedActivitiesCount} />
+            {loading && activities === null ? (
+              <div className="h-9 w-14 rounded-lg bg-slate-200/80 animate-pulse" />
+            ) : (
+              <NumberReveal value={completedActivitiesCount} />
+            )}
           </div>
           <div className="mt-1 text-[11px] text-slate-400 font-medium">Supporting evidence logged</div>
         </div>
@@ -193,7 +199,11 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
             <ClipboardCheck size={18} className="text-emerald-600" />
           </div>
           <div className="mt-3 text-3xl font-extrabold tracking-tight text-[#123057]">
-            <NumberReveal value={authoritativeCount} />
+            {loading && adaptiveHistory.length === 0 && evidenceList.length === 0 ? (
+              <div className="h-9 w-14 rounded-lg bg-slate-200/80 animate-pulse" />
+            ) : (
+              <NumberReveal value={authoritativeCount} />
+            )}
           </div>
           <div className="mt-1 text-[11px] text-slate-400 font-medium">Authoritative records</div>
         </div>
@@ -204,7 +214,9 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
             <Award size={18} className="text-[#ef7e37]" />
           </div>
           <div className="mt-3 text-3xl font-extrabold tracking-tight text-[#ef7e37]">
-            {averageLevel !== "—" ? (
+            {loading && !skillGaps ? (
+              <div className="h-9 w-20 rounded-lg bg-slate-200/80 animate-pulse" />
+            ) : averageLevel !== "—" ? (
               <NumberReveal value={parseFloat(averageLevel)} decimals={1} suffix=" / 5.0" />
             ) : (
               <span className="text-slate-400 text-xl font-bold">Not assessed</span>
@@ -214,7 +226,7 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
         </div>
       </div>
 
-      {/* Validated Evidence Timeline */}
+      {/* Validated Evidence Timeline (Stationary Container) */}
       <div className="rounded-3xl border border-[#dfe7f0] bg-white p-6 sm:p-8 shadow-sm space-y-6 anim-card-enter stagger-2">
         <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
           <div>
@@ -228,7 +240,25 @@ export function OfficialProgress({ onNavigate }: OfficialProgressProps) {
           </span>
         </div>
 
-        {allAuthoritativeItems.length === 0 ? (
+        {loading && allAuthoritativeItems.length === 0 ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-2xl border border-slate-100 bg-[#f8fafc] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 animate-pulse"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-slate-200/80 shrink-0" />
+                  <div className="space-y-1.5">
+                    <div className="h-4 w-40 rounded bg-slate-200/80" />
+                    <div className="h-3 w-28 rounded bg-slate-200/60" />
+                  </div>
+                </div>
+                <div className="h-6 w-24 rounded-full bg-slate-200/80" />
+              </div>
+            ))}
+          </div>
+        ) : allAuthoritativeItems.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#dfe7f0] bg-slate-50/50 p-8 text-center anim-fade-in">
             <TrendingUp size={24} className="mx-auto text-slate-400 anim-badge-pop" />
             <h3 className="mt-2 text-sm font-bold text-[#123057]">No historical assessment data</h3>

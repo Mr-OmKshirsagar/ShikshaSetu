@@ -50,9 +50,6 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
     fetchSkillGaps();
   }, []);
 
-  if (loading && !skillGaps) {
-    return <PageSkeleton />;
-  }
 
   if (error && !skillGaps) {
     return (
@@ -181,40 +178,56 @@ export function OfficialSkillGaps({ onNavigate }: OfficialSkillGapsProps) {
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               {t("skillGaps.title")}
             </div>
-            <div className={`mt-2 font-bold tracking-tight ${isUnassessed ? "text-base text-amber-600 font-semibold" : "text-2xl text-[#ef7e37]"}`}>
-              {isUnassessed ? (
-                t("skillGaps.assessmentRequired")
-              ) : (
-                <NumberReveal value={summary?.total_gaps ?? gaps.length} />
-              )}
-            </div>
+            {loading && !skillGaps ? (
+              <div className="h-7 w-12 rounded bg-slate-200/80 animate-pulse mt-2" />
+            ) : (
+              <div className={`mt-2 font-bold tracking-tight ${isUnassessed ? "text-base text-amber-600 font-semibold" : "text-2xl text-[#ef7e37]"}`}>
+                {isUnassessed ? (
+                  t("skillGaps.assessmentRequired")
+                ) : (
+                  <NumberReveal value={summary?.total_gaps ?? gaps.length} />
+                )}
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl bg-[#f8fafc] p-4 border border-slate-100 card-interactive">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               {t("skillGaps.priorityGaps")}
             </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-rose-600">
-              {isUnassessed ? "—" : <NumberReveal value={(summary?.high_gaps || 0) + (summary?.critical_gaps || 0)} />}
-            </div>
+            {loading && !skillGaps ? (
+              <div className="h-7 w-10 rounded bg-slate-200/80 animate-pulse mt-2" />
+            ) : (
+              <div className="mt-2 text-2xl font-bold tracking-tight text-rose-600">
+                {isUnassessed ? "—" : <NumberReveal value={(summary?.high_gaps || 0) + (summary?.critical_gaps || 0)} />}
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl bg-[#f8fafc] p-4 border border-slate-100 card-interactive">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               {t("skillGaps.assessedCompetencies")}
             </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-teal-700">
-              <NumberReveal value={assessedCount} /> / {gaps.length}
-            </div>
+            {loading && !skillGaps ? (
+              <div className="h-7 w-16 rounded bg-slate-200/80 animate-pulse mt-2" />
+            ) : (
+              <div className="mt-2 text-2xl font-bold tracking-tight text-teal-700">
+                <NumberReveal value={assessedCount} /> / {gaps.length}
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl bg-[#f8fafc] p-4 border border-slate-100 card-interactive">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               {t("skillGaps.roleBaseline")}
             </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-[#123057]">
-              {gaps.length} {t("skillGaps.active")}
-            </div>
+            {loading && !skillGaps ? (
+              <div className="h-7 w-16 rounded bg-slate-200/80 animate-pulse mt-2" />
+            ) : (
+              <div className="mt-2 text-2xl font-bold tracking-tight text-[#123057]">
+                {gaps.length} {t("skillGaps.active")}
+              </div>
+            )}
           </div>
         </div>
       </AnimatedSection>

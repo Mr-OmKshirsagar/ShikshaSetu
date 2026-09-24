@@ -106,27 +106,6 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
   const completedActivities = activities?.activities?.filter((a) => a.status === "completed") || [];
   const inProgressActivities = activities?.activities?.filter((a) => a.status === "in_progress") || [];
 
-  if (loading && !skillGaps && !competencies.length) {
-    return (
-      <div className="space-y-8 animate-fadeIn">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#123057] via-[#1a3d6d] to-[#087f76] p-8 text-white shadow-lg">
-          <div className="h-6 w-48 rounded bg-white/20 animate-pulse" />
-          <div className="mt-3 h-10 w-72 rounded bg-white/30 animate-pulse" />
-        </div>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <div className="h-28 rounded-3xl bg-slate-200/60 animate-pulse" />
-          <div className="h-28 rounded-3xl bg-slate-200/60 animate-pulse" />
-          <div className="h-28 rounded-3xl bg-slate-200/60 animate-pulse" />
-          <div className="h-28 rounded-3xl bg-slate-200/60 animate-pulse" />
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="h-64 rounded-3xl bg-slate-200/50 animate-pulse" />
-          <div className="h-64 rounded-3xl bg-slate-200/50 animate-pulse" />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8 anim-page-enter">
 
@@ -186,7 +165,9 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            {averageLevel != null ? (
+            {loading ? (
+              <div className="h-8 w-24 rounded bg-slate-200 animate-pulse" />
+            ) : averageLevel != null ? (
               <span className="text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
                 <NumberReveal value={averageLevel} decimals={1} suffix=" / 5.0" />
               </span>
@@ -197,9 +178,13 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
             )}
           </div>
           <div className="mt-2 text-[11px] text-slate-400 font-medium">
-            {averageConfidence != null
-              ? `${Math.round(averageConfidence * 100)}% evidence confidence`
-              : "Complete capability assessment"}
+            {loading ? (
+              <div className="h-3.5 w-32 rounded bg-slate-100 animate-pulse" />
+            ) : averageConfidence != null ? (
+              `${Math.round(averageConfidence * 100)}% evidence confidence`
+            ) : (
+              "Complete capability assessment"
+            )}
           </div>
         </div>
 
@@ -214,10 +199,16 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
-              <NumberReveal value={skillGaps?.summary?.required_competencies ?? competencies.length ?? 0} />
-            </span>
-            <span className="text-xs font-medium text-slate-400">framework items</span>
+            {loading ? (
+              <div className="h-8 w-16 rounded bg-slate-200 animate-pulse" />
+            ) : (
+              <>
+                <span className="text-2xl sm:text-3xl font-bold tracking-tight text-[#123057]">
+                  <NumberReveal value={skillGaps?.summary?.required_competencies ?? competencies.length ?? 0} />
+                </span>
+                <span className="text-xs font-medium text-slate-400">framework items</span>
+              </>
+            )}
           </div>
           <button
             onClick={() => onNavigate("My Competencies")}
@@ -238,7 +229,9 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            {averageLevel == null ? (
+            {loading ? (
+              <div className="h-8 w-20 rounded bg-slate-200 animate-pulse" />
+            ) : averageLevel == null ? (
               <span className="text-xl font-black text-amber-600 anim-fade-in">
                 Assessment required
               </span>
@@ -270,12 +263,18 @@ export function OfficialDashboard({ onNavigate }: OfficialDashboardProps) {
             </div>
           </div>
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-[#123057]">
-              <NumberReveal value={completedActivities.length} />
-            </span>
-            <span className="text-xs font-semibold text-slate-400">
-              completed ({inProgressActivities.length} active)
-            </span>
+            {loading ? (
+              <div className="h-8 w-16 rounded bg-slate-200 animate-pulse" />
+            ) : (
+              <>
+                <span className="text-3xl font-black text-[#123057]">
+                  <NumberReveal value={completedActivities.length} />
+                </span>
+                <span className="text-xs font-semibold text-slate-400">
+                  completed ({inProgressActivities.length} active)
+                </span>
+              </>
+            )}
           </div>
           <button
             onClick={() => onNavigate("My Learning")}

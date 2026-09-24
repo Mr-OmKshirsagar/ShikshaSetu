@@ -87,22 +87,9 @@ export function TrainerTalentPassport() {
     }
   };
 
-  if (loading && !profile) {
-    return (
-      <div className="space-y-6 animate-pulse p-6">
-        <div className="h-44 rounded-3xl bg-slate-200/70" />
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="h-40 rounded-2xl bg-slate-200/50" />
-          <div className="h-40 rounded-2xl bg-slate-200/50" />
-          <div className="h-40 rounded-2xl bg-slate-200/50" />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8 anim-page-enter">
-      {/* ── Trainer Hero Banner ── */}
+      {/* ── Trainer Hero Banner (Stationary) ── */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#c2510e] via-[#d96a27] to-[#123057] p-7 sm:p-8 text-white shadow-lg anim-fade-up">
         <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
           <div>
@@ -116,12 +103,12 @@ export function TrainerTalentPassport() {
             <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-orange-100">
               <span className="flex items-center gap-1.5">
                 <Briefcase size={14} className="text-[#fed7aa]" />
-                {profile?.designation || "Lead Faculty · Statistical Sampling"}
+                {profile?.designation || user?.designation || "Lead Faculty · Statistical Sampling"}
               </span>
               <span>·</span>
               <span className="flex items-center gap-1.5">
                 <Building size={14} className="text-[#fed7aa]" />
-                {profile?.department || "National Statistical Systems Training Academy (NSSTA)"}
+                {profile?.department || user?.department || "National Statistical Systems Training Academy (NSSTA)"}
               </span>
             </div>
           </div>
@@ -129,7 +116,13 @@ export function TrainerTalentPassport() {
           <div className="rounded-2xl border border-white/20 bg-white/10 p-4.5 backdrop-blur-md shrink-0 sm:w-64">
             <span className="text-xs font-semibold text-orange-100">Trainer Verification</span>
             <div className="mt-1 text-2xl font-black text-white">
-              {profile?.trainer_experience ? "Certified Faculty" : "Associate Faculty"}
+              {loading && !profile ? (
+                <div className="h-7 w-32 rounded bg-white/20 animate-pulse mt-1" />
+              ) : profile?.trainer_experience ? (
+                "Certified Faculty"
+              ) : (
+                "Associate Faculty"
+              )}
             </div>
             <p className="mt-1 text-[11px] text-orange-200">
               Verified through official authoring & assessment ledger
@@ -138,7 +131,7 @@ export function TrainerTalentPassport() {
         </div>
       </div>
 
-      {/* ── Verified Training Statistics ── */}
+      {/* ── Verified Training Statistics (Stationary Cards) ── */}
       <AnimatedSection className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-[#dfe7f0] bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-400 uppercase">
@@ -146,7 +139,11 @@ export function TrainerTalentPassport() {
             <BookOpen size={16} className="text-[#c2510e]" />
           </div>
           <div className="mt-3 text-3xl font-extrabold text-[#123057]">
-            {profile?.training_materials_count || 0}
+            {loading && !profile ? (
+              <div className="h-9 w-12 rounded bg-slate-200/80 animate-pulse" />
+            ) : (
+              profile?.training_materials_count || 0
+            )}
           </div>
           <span className="text-[11px] text-slate-500">Curricula & documents uploaded</span>
         </div>
@@ -157,7 +154,11 @@ export function TrainerTalentPassport() {
             <PenTool size={16} className="text-[#c2510e]" />
           </div>
           <div className="mt-3 text-3xl font-extrabold text-[#123057]">
-            {profile?.quizzes_authored_count || 0}
+            {loading && !profile ? (
+              <div className="h-9 w-12 rounded bg-slate-200/80 animate-pulse" />
+            ) : (
+              profile?.quizzes_authored_count || 0
+            )}
           </div>
           <span className="text-[11px] text-slate-500">Formal & practice assessments</span>
         </div>
@@ -168,7 +169,11 @@ export function TrainerTalentPassport() {
             <Users size={16} className="text-[#c2510e]" />
           </div>
           <div className="mt-3 text-3xl font-extrabold text-[#087f76]">
-            {profile?.learners_trained_count || 0}
+            {loading && !profile ? (
+              <div className="h-9 w-14 rounded bg-slate-200/80 animate-pulse" />
+            ) : (
+              profile?.learners_trained_count || 0
+            )}
           </div>
           <span className="text-[11px] text-slate-500">Civil servants assessed</span>
         </div>
@@ -179,7 +184,11 @@ export function TrainerTalentPassport() {
             <Award size={16} className="text-[#c2510e]" />
           </div>
           <div className="mt-3 text-3xl font-extrabold text-[#123057]">
-            {Math.round((profile?.average_confidence || 0.85) * 100)}%
+            {loading && !profile ? (
+              <div className="h-9 w-16 rounded bg-slate-200/80 animate-pulse" />
+            ) : (
+              `${Math.round((profile?.average_confidence || 0.85) * 100)}%`
+            )}
           </div>
           <span className="text-[11px] text-slate-500">High authoritative reliability</span>
         </div>
