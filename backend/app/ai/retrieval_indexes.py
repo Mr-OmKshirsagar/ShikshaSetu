@@ -53,16 +53,26 @@ def ensure_retrieval_indexes(database: Database) -> None:
     ]
     
     try:
-        # Create indexes if they don't exist
-        existing_indexes = {idx["name"] for idx in chunks_collection.list_indexes()}
+        existing_indexes = list(chunks_collection.list_indexes())
+        existing_names = {idx["name"] for idx in existing_indexes}
+        has_text_index = any(
+            "text" in idx.get("weights", {}) or any(v == "text" for v in idx.get("key", {}).values())
+            for idx in existing_indexes
+        )
         
         for index_model in indexes:
-            index_name = index_model.document["name"]
-            if index_name not in existing_indexes:
+            index_name = index_model.document.get("name")
+            if index_name in existing_names:
+                continue
+            # MongoDB allows only one text index per collection
+            if any(val == TEXT for _, val in index_model.document.get("key", {}).items()) and has_text_index:
+                logger.debug("Text index already exists on document_chunks, skipping %s", index_name)
+                continue
+            try:
                 chunks_collection.create_indexes([index_model])
                 logger.info(f"Created index: {index_name}")
-            else:
-                logger.debug(f"Index already exists: {index_name}")
+            except Exception as err:
+                logger.debug("Index %s already satisfied or skipped: %s", index_name, err)
         
         logger.info("Document chunk indexes ensured")
         
