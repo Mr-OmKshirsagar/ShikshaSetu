@@ -38,49 +38,6 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // React core libraries
-          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
-            return "vendor-react";
-          }
-          // React ecosystem
-          if (id.includes("node_modules/react-hook-form") || id.includes("node_modules/@hookform")) {
-            return "vendor-forms";
-          }
-          // Icons
-          if (id.includes("node_modules/lucide-react")) {
-            return "vendor-icons";
-          }
-          // Charts
-          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3-")) {
-            return "vendor-charts";
-          }
-          // Radix UI components - split into separate chunk
-          if (id.includes("node_modules/@radix-ui")) {
-            return "vendor-radix";
-          }
-          // UI utilities
-          if (
-            id.includes("node_modules/framer-motion") ||
-            id.includes("node_modules/class-variance-authority") ||
-            id.includes("node_modules/clsx") ||
-            id.includes("node_modules/tailwind-merge")
-          ) {
-            return "vendor-ui-utils";
-          }
-          // Router
-          if (id.includes("node_modules/wouter")) {
-            return "vendor-router";
-          }
-          // HTTP & data
-          if (id.includes("node_modules/axios") || id.includes("node_modules/zod")) {
-            return "vendor-data";
-          }
-          // Other vendor code
-          if (id.includes("node_modules/")) {
-            return "vendor-other";
-          }
-        },
         chunkFileNames: "assets/[name]-[hash].js",
         entryFileNames: "assets/[name]-[hash].js",
         assetFileNames: "assets/[name]-[hash][extname]",
