@@ -79,7 +79,7 @@ export const ShikshaSetuLogo: React.FC<ShikshaSetuLogoProps> = ({
     const sizeCls = ICON_SIZE_CLASSES[size] || ICON_SIZE_CLASSES.md;
     content = (
       <img
-        src="/assets/shikshasetu-icon-official.svg"
+        src="/assets/shikshasetu-logo-official.png"
         alt={alt}
         loading={loadingAttr}
         className={`max-w-full select-none object-contain ${sizeCls} ${imgClassName}`}
@@ -90,7 +90,7 @@ export const ShikshaSetuLogo: React.FC<ShikshaSetuLogoProps> = ({
     content = (
       <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
         <img
-          src="/assets/shikshasetu-icon-official.svg"
+          src="/assets/shikshasetu-logo-official.png"
           alt={alt}
           loading={loadingAttr}
           className={`flex-shrink-0 object-contain ${iconCls} ${imgClassName}`}
@@ -115,7 +115,7 @@ export const ShikshaSetuLogo: React.FC<ShikshaSetuLogoProps> = ({
     content = (
       <div className={`inline-flex items-center justify-center ${className}`}>
         <img
-          src="/assets/shikshasetu-logo-official.svg"
+          src="/assets/shikshasetu-logo-official.png"
           alt={alt}
           loading={loadingAttr}
           className={`max-w-full select-none object-contain ${sizeCls} ${imgClassName}`}
